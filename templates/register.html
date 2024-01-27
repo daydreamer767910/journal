@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+{{ template "base" . }}
+{{ define "content" }}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Register Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 50px;
+        }
+        .register-container {
+            max-width: 300px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .register-container label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .register-container input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        .register-container button {
+            background-color: #4caf50;
+            color: #fff;
+            padding: 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h2>Register</h2>
+        <form id="RegisterForm">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+
+            <label for="phone">Phone:</label>
+            <input type="tel" id="phone" name="phone" required>
+
+            <label for="address">Address:</label>
+            <input type="text" id="address" name="address" required>
+
+            <button type="button" onclick="submitForm()">Register</button>
+
+            <div class="error-message" id="errorMessage"></div>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script>
+        function submitForm() {
+            var username = $('#username').val();
+            var password = $('#password').val();
+            var email = $('#email').val();
+            var phone = $('#phone').val();
+            var address = $('#address').val();
+
+            var formData = {
+                username: username,
+                password: password,
+                email: email,
+                phone: phone,
+                address: address
+            };
+
+            // 使用jQuery的ajax方法发送POST请求
+            $.ajax({
+                type: 'POST',
+                url: 'register', // 根据你的后端路由进行修改
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(data) {
+                    console.log(data);
+                    if (data.status) {
+                        $('#errorMessage').text(data.message);
+                        setTimeout(function() {
+							window.location.href = '/dashboard';
+						}, 1500);
+
+                    } else {
+                        $('#errorMessage').text(data.message);
+                    }
+                },
+                error: function(error) {
+                    console.error('Error:', error);
+                    $('#errorMessage').text(error.responseJSON.message || '发生错误，请稍后重试');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+{{end}}

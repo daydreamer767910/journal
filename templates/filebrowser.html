@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+{{ define "content" }}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Browser</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            margin-top: 5px; 
+            vertical-align: middle;
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        a {
+            text-decoration: none;
+            color: #333333;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script>
+        function sortTable(n) {
+            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+            table = document.getElementById("fileTable");
+            switching = true;
+            dir = "asc";
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+    
+                    // If sorting by Size, parse and compare as numbers
+                    if (n === 4) { // Adjusted index to account for the new checkbox column
+                        var xValue = parseFloat(x.innerHTML);
+                        var yValue = parseFloat(y.innerHTML);
+    
+                        if ((dir === "asc" && xValue > yValue) || (dir === "desc" && xValue < yValue)) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    } else {
+                        // For Name, Modified Time, Type, and Size, compare as strings
+                        if ((dir === "asc" && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) ||
+                            (dir === "desc" && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase())) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else {
+                    if (switchcount === 0 && dir === "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
+        }
+        function deleteSelected() {
+            var selectedFiles = [];
+            var checkboxes = document.querySelectorAll('#fileTable tbody input[type="checkbox"]:checked');
+
+            checkboxes.forEach(function (checkbox) {
+                var row = checkbox.closest('tr');
+                //var name = row.cells[1].innerText; // Assuming the name is in the second column
+                var name = row.cells[1].querySelector('a').getAttribute('href');
+                //var encodedName = encodeURIComponent(name);
+                selectedFiles.push(name);
+            });
+
+            // Send the selected files to the backend using AJAX (you can use fetch or other libraries)
+            fetch('/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ files: selectedFiles }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Handle the response from the backend
+                console.log(data);
+                location.reload();
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+        }
+    </script>
+    
+</head>
+<body>
+    <h1>File Browser</h1>
+    <button onclick="deleteSelected()">Delete Selected</button>
+    <table id="fileTable">
+        <thead>
+            <tr>
+                <th></th> <!-- 新增的勾选列 -->
+                <th onclick="sortTable(1)">Name</th>
+                <th onclick="sortTable(2)">Modified Time</th>
+                <th onclick="sortTable(3)">Type</th>
+                <th onclick="sortTable(4)">Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Files}}
+                <tr>
+                    <td>
+                        <input type="checkbox">
+                    </td>
+                    <td style="display: flex; align-items: center;">
+                        <img src="{{ GetThumbnail .Name }}" alt="Thumbnail" class="thumbnail" style="width: 40px; height: 40px;">
+                        <a href="{{.URL}}"{{if .IsDir}} style="font-weight:bold;"{{end}}>{{.Name}}</a>
+                    </td>
+                    <td>{{.ModTime}}</td>
+                    <td>{{.Type}}</td>
+                    <td>{{.Size}}</td>
+                </tr>
+            {{end}}
+        </tbody>
+    </table>
+</body>
+</html>
+{{ end }}

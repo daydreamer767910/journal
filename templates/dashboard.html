@@ -1,0 +1,66 @@
+<!-- dashboard.html -->
+
+{{ template "base" . }}
+{{ define "content" }}
+    <div class="dashboard-container">
+        <h1>Hi! {{ .username }}!  Welcome to the Dashboard</h1>
+        <div class="upload-section">
+            <h2>Files management</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <label for="fileInput" class="custom-file-upload">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </label>
+                <input type="file" name="files[]" id="fileInput" multiple onchange="updateStatusBar('files selected')" />
+                <button type="button" onclick="uploadFiles()">
+                    <i class="fas fa-upload"></i> Upload
+                </button>
+            </form>
+            <br>
+            <label id="statusBar"></label>
+            <br>
+            <br>
+            <a href="listfile">Go to files browser</a>
+            <br>
+        </div>
+        <h2>Security setting</h2>
+        <div class="config-section"></div>
+            <a href="security">Go to Security Settings</a>
+        </div>
+    </div>
+    
+    <script>
+        function updateStatusBar(status) {
+            document.getElementById('statusBar').innerText = status;
+        }
+
+        async function uploadFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const formData = new FormData();
+
+            for (const file of fileInput.files) {
+                formData.append('files[]', file);
+            }
+
+            try {
+                updateStatusBar('Uploading...');
+
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    updateStatusBar('Waiting for response...');
+                    const responseData = await response.json();
+                    updateStatusBar(responseData.message);
+                } else {
+                    updateStatusBar(response.error());
+                }
+            } catch (error) {
+                console.error('Error during file upload:', error);
+                updateStatusBar('Upload failed:'+error);
+            }
+        }
+
+    </script>
+{{ end }}

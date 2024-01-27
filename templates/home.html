@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f8f8;
+            display: flex;
+            flex-direction: column; /* 将主轴方向改为垂直方向 */
+        }
+
+        header {
+            background-color: #87CEFA; /* 浅蓝色 */
+            padding: 10px;
+            text-align: center;
+        }
+
+        main {
+            text-align: center;
+            background-color: #c9d8da; /* 深绿色 */
+            color: #fff; /* 设置文字颜色为白色 */
+            padding: 20px; /* 添加内边距 */
+            flex-grow: 1;
+        }
+
+        img {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+        }
+
+        nav {
+            background-color: #87CEFA; /* 浅蓝色 */
+            display: flex;
+            justify-content: center; /* 将导航居中 */
+            padding: 10px;
+        }
+
+        nav a {
+            display: block;
+            color: #030213; 
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Welcome to Our Website</h1>
+    </header>
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="register">Register</a>
+        <a href="login">Login</a>
+    </nav>
+
+    <main>
+        <h2>Explore Our World</h2>
+        <img src="/static/logo.jpg" alt="Beautiful Image">
+    </main>
+
+</body>
+</html>

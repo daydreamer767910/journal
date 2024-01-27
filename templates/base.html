@@ -1,0 +1,48 @@
+<!-- base.html -->
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .username }}</title>
+</head>
+
+<body>
+
+<!-- 导航按钮 -->
+<div style="position: absolute; top: 10px; right: 10px;">
+    <button onclick="goBack()">Back</button>
+    <a href="/home"><button>Home</button></a>
+    <button onclick="logout()">Logout</button>
+</div>
+
+<!-- 具体内容插入的位置 -->
+{{ template "content" . }}
+
+<script>
+    function goBack() {
+        window.history.back();
+    }
+
+    function logout() {
+        // 发送 GET 请求到 /logout
+        fetch('/logout', {
+            method: 'GET',
+            credentials: 'include'  // 包括跨域请求时发送凭据（如Cookie）
+        })
+        .then(response => {
+            // 处理响应，可以根据需要执行其他操作
+            console.log('Logout successful');
+            // 可以重定向到登录页面等
+        })
+        .catch(error => {
+            console.error('Logout failed', error);
+        });
+    }
+</script>
+
+</body>
+</html>
+{{end}}
