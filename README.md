@@ -5,7 +5,7 @@ Dependencies
 
 
 Getting Started
-git clone [https://github.com/jellyfin/jellyfin-web.git](https://github.com/daydreamer767910/journal.git)
+git clone https://github.com/daydreamer767910/journal.git
 cd journal
 make
 
