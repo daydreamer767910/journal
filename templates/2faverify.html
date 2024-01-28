@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{{ define "content" }}
+{{ template "base" . }}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -45,7 +45,7 @@
             contentType: 'application/json',
             data: JSON.stringify({ code: code }),
             success: function (data) {
-                alert("2FA code verified. Access granted!");
+                //alert("2FA code verified. Access granted!");
                 window.location.href = "{{.basePath}}/dashboard"; // 替换成你的目标页面路径
             },
             error: function (error) {
@@ -57,4 +57,4 @@
 
 </body>
 </html>
-{{ end }}
+

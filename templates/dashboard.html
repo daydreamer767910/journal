@@ -1,7 +1,7 @@
 <!-- dashboard.html -->
 
 {{ template "base" . }}
-{{ define "content" }}
+
     <div class="dashboard-container">
         <h1>Hi! {{ .username }}!  Welcome to the Dashboard</h1>
         <div class="upload-section">
@@ -19,7 +19,7 @@
             <label id="statusBar"></label>
             <br>
             <br>
-            <a href="listfile">Go to files browser</a>
+            <a href="filesbrowser">Go to files browser</a>
             <br>
         </div>
         <h2>Security setting</h2>
@@ -63,4 +63,4 @@
         }
 
     </script>
-{{ end }}
+

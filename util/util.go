@@ -2,8 +2,6 @@ package util
 
 import (
 	"fmt"
-	"io"
-	"io/fs"
 	"math/rand"
 	"os"
 	"strings"
@@ -11,18 +9,6 @@ import (
 
 	"github.com/labstack/gommon/log"
 )
-
-func StringFromEmbedFile(embed fs.FS, filename string) (string, error) {
-	file, err := embed.Open(filename)
-	if err != nil {
-		return "", err
-	}
-	content, err := io.ReadAll(file)
-	if err != nil {
-		return "", err
-	}
-	return string(content), nil
-}
 
 func RandomString(length int) string {
 	var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))

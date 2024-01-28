@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"journal/util"
 	"net/http"
 	"time"
@@ -78,12 +77,12 @@ func ValidJWT(next echo.HandlerFunc) echo.HandlerFunc {
 		if !ok {
 			return c.JSON(http.StatusNonAuthoritativeInfo, jsonHTTPResponse{0, "bad JWT", "type"})
 		}
-		expTime, ok := claims["exp"].(float64)
+		/*expTime, ok := claims["exp"].(float64)
 		if !ok {
 			return c.JSON(http.StatusNonAuthoritativeInfo, jsonHTTPResponse{0, "bad JWT", "exp"})
 		}
 
-		fmt.Printf("user:%v, exp:%v, other:%v\n", userID, expTime, other)
+		fmt.Printf("user:%v, exp:%v, other:%v\n", userID, expTime, other)*/
 		c.Set("userid", userID)
 		c.Set("jwttype", other.(string))
 

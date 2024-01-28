@@ -7,68 +7,74 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/rs/xid"
 )
 
-func SecurityPage(db store.IStore) echo.HandlerFunc {
+// Login for signing in handler
+func Login(db store.IStore) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		userid := c.Get("userid").(string)
-
-		user, err := db.GetUserByID(userid)
-		if err != nil {
-			return c.Redirect(http.StatusTemporaryRedirect, util.BasePath+"/login")
+		var data jsonHTTPLoginForm
+		if err := c.Bind(&data); err != nil {
+			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Bad post data:", err.Error()})
 		}
-		return c.Render(http.StatusOK, "security.html", map[string]interface{}{
-			"username":  user.Username,
-			"enable2fa": user.Enable2FA,
-		})
+
+		username := data.Username
+		password := data.Password
+		//rememberMe := data.RememberMe
+		dbuser, err := db.GetUserByName(username)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "Cannot query user ", username})
+		}
+		userCorrect := subtle.ConstantTimeCompare([]byte(username), []byte(dbuser.Username)) == 1
+
+		var passwordCorrect bool
+		if dbuser.PasswordHash != "" {
+			match, err := util.VerifyHash(dbuser.PasswordHash, password)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "Wrong password", ""})
+			}
+			passwordCorrect = match
+		} else {
+			passwordCorrect = subtle.ConstantTimeCompare([]byte(password), []byte(dbuser.Password)) == 1
+		}
+
+		if userCorrect && passwordCorrect {
+			userid := xid.New().String()
+			tokenstring, err := generateToken(userid, util.JwtSecret, "login")
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "JWT generate fail", err.Error()})
+			}
+			//update dbuser
+			if dbuser.PasswordHash == "" {
+				dbuser.PasswordHash, _ = util.HashPassword(password)
+			}
+			dbuser.Userid = userid
+			dbuser.Token = tokenstring
+			db.SaveUser(dbuser)
+			//use cookie to keep the token, Bearer Tokens to be added...
+			setCookie(c, tokenstring)
+			//return c.JSON(http.StatusOK, map[string]string{"token": token, "secret": user.Secret})
+			return c.JSON(http.StatusOK, jsonHTTPResponse{1, "Logged in successfully", dbuser})
+		}
+		return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "Invalid credentials", ""})
 	}
 }
 
-func Disalbe2FA(db store.IStore) echo.HandlerFunc {
+// Logout to log a user out
+func Logout(db store.IStore) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		userid := c.Get("userid").(string)
 		tokentype := c.Get("jwttype").(string)
 
 		user, err := db.GetUserByID(userid)
 		if err != nil {
-			return c.Redirect(http.StatusTemporaryRedirect, util.BasePath+"/login")
+			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "need to login first", ""})
 		}
 		if user.Enable2FA == true && tokentype != "2FA" {
 			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "need to pass 2FA auth first", ""})
 		}
-		user.Enable2FA = false
-		user.Secret2FA = ""
-		db.SaveUser(user)
-		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "2FA disabled", ""})
-	}
-}
-
-func Enalbe2FA(db store.IStore) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		userid := c.Get("userid").(string)
-
-		user, err := db.GetUserByID(userid)
-		if err != nil {
-			return c.Redirect(http.StatusTemporaryRedirect, util.BasePath+"/login")
-		}
-		totp_key, err := generate2FAKey(user.Username)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "generate key fail", err.Error()})
-		}
-		user.Secret2FA = totp_key.Secret()
-		user.Enable2FA = true
-		//need a new JWT as well
-		tokenstring, err := generateToken(userid, util.JwtSecret, "2FA")
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "JWT generate fail", err.Error()})
-		}
-		//update JWT
-		user.Token = tokenstring
-
-		//use cookie to keep the token, Bearer Tokens to be added...
-		setCookie(c, tokenstring)
-		db.SaveUser(user)
-		return c.JSON(http.StatusOK, jsonHTTPResponse{1, totp_key.URL(), totp_key.Secret()})
+		setCookie(c, "")
+		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "Logged out successfully", ""})
 	}
 }
 
@@ -78,7 +84,7 @@ func ChangePassword(db store.IStore) echo.HandlerFunc {
 
 		user, err := db.GetUserByID(userid)
 		if err != nil {
-			return c.Redirect(http.StatusTemporaryRedirect, util.BasePath+"/login")
+			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "bad user id", ""})
 		}
 		// 解析 JSON 请求体
 		var request jsonHTTPChangePassword

@@ -18,8 +18,7 @@
     <button onclick="logout()">Logout</button>
 </div>
 
-<!-- 具体内容插入的位置 -->
-{{ template "content" . }}
+
 
 <script>
     function goBack() {
@@ -36,6 +35,7 @@
             // 处理响应，可以根据需要执行其他操作
             console.log('Logout successful');
             // 可以重定向到登录页面等
+            window.location.href = '/home';
         })
         .catch(error => {
             console.error('Logout failed', error);

@@ -38,7 +38,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&flagBindAddress, "bind-address", util.LookupEnvOrString("BIND_ADDRESS", "0.0.0.0:5000"), "Address:Port to which the app will be bound.")
+	flag.StringVar(&flagBindAddress, "bind-address", util.LookupEnvOrString("BIND_ADDRESS", "0.0.0.0:81"), "Address:Port to which the app will be bound.")
 	flag.StringVar(&flagBasePath, "base-path", "/", "The base path of the URL")
 	flag.StringVar(&flagJwtSecret, "jwt-secret", util.LookupEnvOrString("JWT_SECRET", "12345678"), "The JWT secret")
 	flag.Parse()
@@ -92,6 +92,7 @@ func main() {
 	app.GET(util.BasePath+"/logout", handler.Logout(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/security", handler.SecurityPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/auth2fa", handler.Auth2FAPage(db), handler.ValidJWT)
+	app.GET(util.BasePath+"/filesbrowser", handler.FileBrowser(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/listfile", handler.ListFiles(db), handler.ValidJWT)
 
 	app.POST(util.BasePath+"/login", handler.Login(db))

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{{ define "content" }}
+{{ template "base" . }}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -113,12 +113,63 @@
                 console.error('There was a problem with the fetch operation:', error);
             });
         }
+        document.addEventListener('DOMContentLoaded', function() {
+            refresh();
+        });
+        function refresh() {
+            fetch('/listfile', {
+                method: 'GET',
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 清空表格中的数据
+                var tableBody = document.querySelector('#fileTable tbody');
+                tableBody.innerHTML = '';
+
+                // 将服务器返回的数据填充到表格中
+                data.meta.forEach(file => {
+                    var newRow = document.createElement('tr');
+                    newRow.innerHTML = `
+                        <td>
+                            <input type="checkbox">
+                        </td>
+                        <td style="display: flex; align-items: center;">
+                            <img src="${file.Thumnail}" alt="Thumbnail" class="thumbnail" style="width: 40px; height: 40px;">
+                            <a href="${file.URL}" ${file.IsDir ? 'style="font-weight:bold;"' : ''}>${file.Name}</a>
+                        </td>
+                        <td>${file.ModTime}</td>
+                        <td>${file.Type}</td>
+                        <td>${file.Size}</td>
+                    `;
+                    tableBody.appendChild(newRow);
+                });
+
+                // 处理 Meta 数据
+                handleMeta(data.meta);
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+        }
+
+        function handleMeta(meta) {
+            // 根据 meta 的具体类型进行处理
+            // 这里假设 Meta 是一个对象，并且包含了一些信息
+            console.log('Meta:', meta);
+        }
+
     </script>
     
 </head>
 <body>
     <h1>File Browser</h1>
     <button onclick="deleteSelected()">Delete Selected</button>
+    <button onclick="refresh()">Refresh</button>
     <table id="fileTable">
         <thead>
             <tr>
@@ -148,4 +199,4 @@
     </table>
 </body>
 </html>
-{{ end }}
+
