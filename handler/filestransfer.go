@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -90,14 +91,17 @@ func Upload(db store.IStore) echo.HandlerFunc {
 			if _, err := io.Copy(dst, src); err != nil {
 				return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "Error copying file", err.Error()})
 			}
-			var percentages []int
-			var durations []int
-			for _, cfg := range util.ThumbnailCfg {
-				percentages = append(percentages, cfg.PercentPosition)
-				durations = append(durations, cfg.Duration)
+			if strings.Contains(util.GetMediaType(dst_file), "video") {
+				var percentages []int
+				var durations []int
+				for _, cfg := range util.ThumbnailCfg {
+					percentages = append(percentages, cfg.PercentPosition)
+					durations = append(durations, cfg.Duration)
+				}
+
+				util.GenerateThumbnail(dst_file, percentages, durations)
 			}
 
-			util.GenerateThumbnail(dst_file, percentages, durations)
 		}
 
 		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "Files uploaded successfully", ""})

@@ -1,0 +1,13 @@
+{
+	"userid": "cmtdntool7ils94pqfig",
+	"username": "mass",
+	"password": "123456",
+	"emal": "oumass.vpn@gmail.com",
+	"phone": "7787982943",
+	"address": "",
+	"password_hash": "JDJhJDE0JHBuSksudU9DUVdQR0E2MkJNcWhTSmV3b1h1Ty9zNXoyV3dEZ1dQVjJjSFJRMkNZdkRZdTQ2",
+	"admin": false,
+	"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDY4MzEyMjMsIm90aGVyIjoibG9naW4iLCJzdWIiOiJjbXRkbnRvb2w3aWxzOTRwcWZpZyJ9.spoPPGg61a8RSACNypuZkKBlcf42nFdthbP4eHtspeg",
+	"secret2fa": "",
+	"enable2fa": false
+}

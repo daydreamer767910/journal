@@ -25,7 +25,7 @@
         th {
             background-color: #f2f2f2;
         }
-
+       
         a {
             text-decoration: none;
             color: #333333;
@@ -117,21 +117,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             refresh();
         });
-        function getVideoType(fileName) {
-            const videoTypes = {
-                ".mp4": "video/mp4",
-                ".mov": "video/quicktime",
-                ".avi": "video/x-msvideo",
-                ".wmv": "video/x-ms-wmv",
-                ".flv": "video/x-flv",
-                ".mpeg": "video/mpeg",
-                ".mpg": "video/mpeg",
-                ".mkv": "video/x-matroska"
-            };
-
-            const extension = fileName.toLowerCase().slice(-4);
-            return videoTypes[extension] || null;
-        }
+        
         function refresh() {
             fetch('/listfile', {
                 method: 'GET',
@@ -150,17 +136,29 @@
                 // 将服务器返回的数据填充到表格中
                 data.meta.forEach(file => {
                     var newRow = document.createElement('tr');
-                    var mediaType = getVideoType(file.Thumbnail);
+                    
                     newRow.innerHTML = `
                         <td>
                             <input type="checkbox">
                         </td>
                         <td style="display: flex; flex-direction: column; align-items: left;">
-                            <video controls muted autoplay loop preload="auto" width="320" ${mediaType == null ? `poster="${file.Thumbnail}"` : ''}>
-                                <source src="${file.Thumbnail}" type="${mediaType}">
-                                Sorry, your browser doesn't support embedded videos
-                            </video>
-                            <a href="${file.URL}">Download ${file.Name}</a>
+                            ${file.ThumbnailType.startsWith("video")?
+                            `<video controls muted autoplay loop preload="auto" width="320px" height="240px"> \
+                                <source src="${file.Thumbnail}" type="${file.ThumbnailType}"> \
+                                Sorry, your browser does not support embedded videos \
+                            </video>`
+                            : file.ThumbnailType.startsWith("audio") ?
+                            `<audio controls loop preload="auto" width="320px" height="50px"> \
+                                <source src="${file.Thumbnail}" type="${file.ThumbnailType}"> \
+                                Sorry, your browser does not support embedded videos \
+                            </audio>`
+                            : file.ThumbnailType.startsWith("image") ?
+                            `<img src="${file.Thumbnail}" alt="image" width="320px" height="240px"/>`
+                            :
+                            `<object type="${file.ThumbnailType}" data="${file.Thumbnail}" width="320px" height="240px"> \
+                                <img src="/static/ufo.png" alt="useful image description" sizes="320px, 240px"/> \
+                            </object> `}
+                            <a href="${file.URL}">${file.Name}</a>
                         </td>
                         <td>${file.ModTime}</td>
                         <td>${file.Type}</td>

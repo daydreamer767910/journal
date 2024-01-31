@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,14 +10,58 @@ import (
 
 const thumbnailExtension = ".mp4"
 
+var mediaType = map[string]string{
+	".mp4":  "video/mp4",
+	".mov":  "video/quicktime",
+	".avi":  "video/x-msvideo",
+	".wmv":  "video/x-ms-wmv",
+	".flv":  "video/x-flv",
+	".mpeg": "video/mpeg",
+	".mpg":  "video/mpeg",
+	".mkv":  "video/x-matroska",
+
+	".mp3":  "audio/mpeg",
+	".wav":  "audio/wav",
+	".ogg":  "audio/ogg",
+	".flac": "audio/flac",
+	".wma":  "audio/x-ms-wma",
+
+	".jpg":  "image/jpeg",
+	".jpeg": "image/jpeg",
+	".png":  "image/png",
+	".gif":  "image/gif",
+
+	".pdf":  "application/pdf",
+	".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	".xls":  "application/vnd.ms-excel",
+	".doc":  "application/msword",
+	".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	".ppt":  "application/vnd.ms-powerpoint",
+	".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+
+	".txt": "text/plain",
+	".csv": "text/csv",
+}
+
 type fileInfo struct {
-	Name      string
-	Thumbnail string
-	URL       string
-	Size      int64
-	Type      string
-	ModTime   string
-	IsDir     bool
+	Name          string
+	Thumbnail     string
+	ThumbnailType string
+	URL           string
+	Size          int64
+	Type          string
+	ModTime       string
+	IsDir         bool
+}
+
+func GetMediaType(fileName string) string {
+
+	extension := strings.ToLower(filepath.Ext(fileName))
+	eType, ok := mediaType[extension]
+	if !ok {
+		eType = "unknown"
+	}
+	return eType
 }
 
 // GetVideoDuration 获取视频的长度（持续时间）
@@ -38,14 +81,7 @@ func GetVideoDuration(videoFile string) (float64, error) {
 
 func GenerateThumbnail(inputFile string, percentages []int, durations []int) error {
 	extension := strings.ToLower(filepath.Ext(inputFile))
-	switch extension {
-	case ".mp4", ".mov", ".avi", ".wmv", ".flv", ".mpeg", ".mpg", ".mkv":
-		break
-		//fmt.Printf("inputFile %s\n", inputFile)
-	default:
-		//fmt.Printf("inputFile %s no need thumbnail[%s]\n", inputFile, extension)
-		return errors.New("no need to generate thumbnail for " + extension)
-	}
+
 	thumbnail_path := filepath.Join(filepath.Dir(inputFile), "thumbnail")
 	err := os.MkdirAll(thumbnail_path, os.ModePerm)
 	if err != nil {
@@ -82,26 +118,21 @@ func GenerateThumbnail(inputFile string, percentages []int, durations []int) err
 	return nil
 }
 
-func GetThumbnail(directoryPath string, fileName string) string {
+func GetThumbnail(directoryPath string, fileName string) (Thumbnail string, ThumbnailType string) {
 	extension := strings.ToLower(filepath.Ext(fileName))
 	base := strings.TrimSuffix(fileName, extension)
-
-	// 根据文件类型设置不同的缩略图路径
-	switch extension {
-	case ".pdf":
-		return "/static/pdf.png"
-	case ".jpg", ".jpeg", ".png", ".gif":
-		return filepath.Join(directoryPath, fileName)
-	case ".txt":
-		return "/static/txt.png"
-	case ".xlsx", ".cvs", ".xls":
-		return "/static/excel.png"
-	case ".mp4", ".mov", ".avi", ".wmv", ".flv", ".mpeg", ".mpg", ".mkv":
-		return filepath.Join(directoryPath, "thumbnail", base+thumbnailExtension)
-		//return filepath.Join(directoryPath, fileName)
-	default:
-		return "/static/ufo.png"
+	mType := GetMediaType(fileName)
+	if mType == "unknown" {
+		Thumbnail = "/static/ufo.png"
+		ThumbnailType = extension
+	} else if strings.Contains(mType, "video") {
+		Thumbnail = filepath.Join(directoryPath, "thumbnail", base+thumbnailExtension)
+		ThumbnailType = GetMediaType(Thumbnail)
+	} else {
+		Thumbnail = filepath.Join(directoryPath, fileName)
+		ThumbnailType = mType
 	}
+	return
 }
 
 func ListFiles(directoryPath string) ([]fileInfo, error) {
@@ -134,15 +165,18 @@ func ListFiles(directoryPath string) ([]fileInfo, error) {
 			fileinfo, _ := entry.Info()
 
 			modTimeFormatted := fileinfo.ModTime().Format("2006-01-02 15:04:05")
+			thumbnail, thumbnailtype := GetThumbnail(directoryPath, entry.Name())
+			url := filepath.Join(directoryPath, entry.Name())
 
 			files = append(files, fileInfo{
-				Name:      entry.Name(),
-				Thumbnail: filepath.ToSlash(GetThumbnail(directoryPath, entry.Name())),
-				URL:       filepath.ToSlash(filepath.Join(directoryPath, entry.Name())),
-				Size:      fileinfo.Size(),
-				Type:      strings.ToLower(filepath.Ext(entry.Name())),
-				ModTime:   modTimeFormatted,
-				IsDir:     false,
+				Name:          entry.Name(),
+				Thumbnail:     thumbnail,
+				ThumbnailType: thumbnailtype,
+				URL:           filepath.ToSlash(url),
+				Size:          fileinfo.Size(),
+				Type:          GetMediaType(entry.Name()),
+				ModTime:       modTimeFormatted,
+				IsDir:         false,
 			})
 		}
 	}

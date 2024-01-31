@@ -1,0 +1,13 @@
+{
+	"userid": "cmqpjhool7ilk4369akg",
+	"username": "admin",
+	"password": "123456",
+	"emal": "",
+	"phone": "",
+	"address": "",
+	"password_hash": "JDJhJDE0JG1mMU5BWEI3RkJUYnpiZm5QaHFGNk9ULzY0NEVNVG5hTGJGVnJNZU01NkRISkdKQ0M3Zlou",
+	"admin": true,
+	"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDY0ODY1OTksIm90aGVyIjoibG9naW4iLCJzdWIiOiJjbXFwamhvb2w3aWxrNDM2OWFrZyJ9.O06fJ-1u4cZLdlEt_IuwLl5iCm0629KVRymMh2TD-vU",
+	"secret2fa": "",
+	"enable2fa": false
+}
