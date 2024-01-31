@@ -39,8 +39,7 @@ func (t *TemplateRegistry) Render(w io.Writer, name string, data interface{}, c 
 func New(tmplDir fs.FS, extraData map[string]interface{}) *echo.Echo {
 
 	funcs := template.FuncMap{
-		"StringsJoin":  strings.Join,
-		"GetThumbnail": util.GetThumnail,
+		"StringsJoin": strings.Join,
 	}
 
 	templates := template.Must(template.New("journal").Funcs(funcs).ParseFS(tmplDir, "*.html"))

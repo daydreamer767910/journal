@@ -31,14 +31,9 @@ func ListFiles(db store.IStore) echo.HandlerFunc {
 		} else {
 			upload_path = filepath.Join("public", "uploads", user.Username)
 		}
-		//upload_path := filepath.Join("public\\uploads", user.Username)
-		files, err := util.ListFiles(upload_path)
-		/*if err != nil {
-			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "read dir fail", err.Error()})
-		}*/
-		/*return c.Render(http.StatusOK, "filebrowser.html", map[string]interface{}{
-		"username": user.Username,
-		"Files":    files})*/
+
+		files, _ := util.ListFiles(upload_path)
+
 		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "read dir ok", files})
 	}
 }
@@ -63,8 +58,13 @@ func Upload(db store.IStore) echo.HandlerFunc {
 
 		// 获取上传的文件
 		files := form.File["files[]"]
+		currentDir, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Failed to get current directory:", err)
+			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "", err})
 
-		upload_path := filepath.Join("public", "uploads", user.Username)
+		}
+		upload_path := filepath.Join(currentDir, "public", "uploads", user.Username)
 
 		// 使用 os.MkdirAll 创建目录，包括所有不存在的父目录
 		err = os.MkdirAll(upload_path, os.ModePerm)
@@ -75,7 +75,8 @@ func Upload(db store.IStore) echo.HandlerFunc {
 		// 遍历处理每个文件
 		for _, file := range files {
 			// 打开目标文件
-			dst, err := os.Create(filepath.Join(upload_path, file.Filename))
+			dst_file := filepath.Join(upload_path, file.Filename)
+			dst, err := os.Create(dst_file)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "Error creating destination file", err.Error()})
 			}
@@ -89,6 +90,14 @@ func Upload(db store.IStore) echo.HandlerFunc {
 			if _, err := io.Copy(dst, src); err != nil {
 				return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "Error copying file", err.Error()})
 			}
+			var percentages []int
+			var durations []int
+			for _, cfg := range util.ThumbnailCfg {
+				percentages = append(percentages, cfg.PercentPosition)
+				durations = append(durations, cfg.Duration)
+			}
+
+			util.GenerateThumbnail(dst_file, percentages, durations)
 		}
 
 		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "Files uploaded successfully", ""})

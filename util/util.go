@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -52,4 +54,43 @@ func LookupEnvOrString(key string, defaultVal string) string {
 		return val
 	}
 	return defaultVal
+}
+
+func RunCommand(cmd string, arg ...string) ([]byte, error) {
+	// 创建日志目录
+	logsDir := "logs"
+	err := os.MkdirAll(logsDir, os.ModePerm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logs directory: %v", err)
+	}
+
+	// 构建日志文件路径
+	logFileName := fmt.Sprintf("cmd-%s.log", time.Now().Format("2006-01-02-15-04-05.000"))
+	logFilePath := filepath.Join(logsDir, logFileName)
+
+	// 打开日志文件用于写入
+	logFile, err := os.Create(logFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create log file: %v", err)
+	}
+	defer logFile.Close()
+
+	// 创建 cmd 对象并设置输出重定向
+	command := exec.Command(cmd, arg...)
+	command.Stdout = logFile
+	command.Stderr = logFile
+	//fmt.Println(cmd, arg)
+	// 执行命令
+	err = command.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run command: %v", err)
+	}
+
+	// 在这里读取日志文件内容并返回
+	output, err := os.ReadFile(logFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read log file: %v", err)
+	}
+
+	return output, nil
 }

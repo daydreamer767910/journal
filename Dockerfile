@@ -25,8 +25,12 @@ COPY templates /build/templates
 RUN CGO_ENABLED=0 GOOS=linux make
 
 # 第二个阶段 - 生产阶段
-FROM alpine:3.16
+#FROM alpine:3.16
+FROM alpine:latest
 
+# 更新包列表并安装 FFmpeg
+RUN apk update && \
+    apk add --no-cache ffmpeg
 # 复制构建阶段生成的文件到生产镜像中
 WORKDIR /app
 COPY --from=builder /build/journal .

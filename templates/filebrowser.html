@@ -19,6 +19,7 @@
             vertical-align: middle;
             padding: 8px;
             cursor: pointer;
+            width: auto;
         }
 
         th {
@@ -116,6 +117,21 @@
         document.addEventListener('DOMContentLoaded', function() {
             refresh();
         });
+        function getVideoType(fileName) {
+            const videoTypes = {
+                ".mp4": "video/mp4",
+                ".mov": "video/quicktime",
+                ".avi": "video/x-msvideo",
+                ".wmv": "video/x-ms-wmv",
+                ".flv": "video/x-flv",
+                ".mpeg": "video/mpeg",
+                ".mpg": "video/mpeg",
+                ".mkv": "video/x-matroska"
+            };
+
+            const extension = fileName.toLowerCase().slice(-4);
+            return videoTypes[extension] || null;
+        }
         function refresh() {
             fetch('/listfile', {
                 method: 'GET',
@@ -134,13 +150,17 @@
                 // 将服务器返回的数据填充到表格中
                 data.meta.forEach(file => {
                     var newRow = document.createElement('tr');
+                    var mediaType = getVideoType(file.Thumbnail);
                     newRow.innerHTML = `
                         <td>
                             <input type="checkbox">
                         </td>
-                        <td style="display: flex; align-items: center;">
-                            <img src="${file.Thumnail}" alt="Thumbnail" class="thumbnail" style="width: 40px; height: 40px;">
-                            <a href="${file.URL}" ${file.IsDir ? 'style="font-weight:bold;"' : ''}>${file.Name}</a>
+                        <td style="display: flex; flex-direction: column; align-items: left;">
+                            <video controls muted autoplay loop preload="auto" width="320" ${mediaType == null ? `poster="${file.Thumbnail}"` : ''}>
+                                <source src="${file.Thumbnail}" type="${mediaType}">
+                                Sorry, your browser doesn't support embedded videos
+                            </video>
+                            <a href="${file.URL}">Download ${file.Name}</a>
                         </td>
                         <td>${file.ModTime}</td>
                         <td>${file.Type}</td>
@@ -162,7 +182,7 @@
             // 这里假设 Meta 是一个对象，并且包含了一些信息
             console.log('Meta:', meta);
         }
-
+        
     </script>
     
 </head>
@@ -173,7 +193,7 @@
     <table id="fileTable">
         <thead>
             <tr>
-                <th></th> <!-- 新增的勾选列 -->
+                <th></th> 
                 <th onclick="sortTable(1)">Name</th>
                 <th onclick="sortTable(2)">Modified Time</th>
                 <th onclick="sortTable(3)">Type</th>
@@ -181,20 +201,6 @@
             </tr>
         </thead>
         <tbody>
-            {{range .Files}}
-                <tr>
-                    <td>
-                        <input type="checkbox">
-                    </td>
-                    <td style="display: flex; align-items: center;">
-                        <img src="{{ GetThumbnail .Name }}" alt="Thumbnail" class="thumbnail" style="width: 40px; height: 40px;">
-                        <a href="{{.URL}}"{{if .IsDir}} style="font-weight:bold;"{{end}}>{{.Name}}</a>
-                    </td>
-                    <td>{{.ModTime}}</td>
-                    <td>{{.Type}}</td>
-                    <td>{{.Size}}</td>
-                </tr>
-            {{end}}
         </tbody>
     </table>
 </body>

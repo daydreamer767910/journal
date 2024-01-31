@@ -23,7 +23,9 @@ require (
 )
 
 require (
+	github.com/chai2010/webp v1.1.1
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
+	github.com/giorgisio/goav v0.1.0
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo-jwt/v4 v4.2.0
@@ -37,10 +39,11 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/go-playground/validator.v9 v9.31.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	gvisor.dev/gvisor v0.0.0-20240129062918-23736c31c96d
 )
