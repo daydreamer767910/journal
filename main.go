@@ -112,6 +112,9 @@ func main() {
 	assetHandler := http.FileServer(http.FS(assetsDir))
 	// serves other static files
 	app.GET(util.BasePath+"/static/*", echo.WrapHandler(http.StripPrefix(util.BasePath+"/static/", assetHandler)))
+	app.GET(util.BasePath+"/public/*",
+		echo.WrapHandler(http.StripPrefix(util.BasePath+"/public/", http.FileServer(http.Dir(util.BasePath+"public")))),
+		handler.ValidJWT)
 
 	// 启动 Echo 服务器，使用TLS
 	//app.Logger.Fatal(app.StartTLS(util.BindAddress, "cert/fullchain.pem", "cert/privkey.pem"))

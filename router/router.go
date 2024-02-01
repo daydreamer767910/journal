@@ -74,9 +74,6 @@ func New(tmplDir fs.FS, extraData map[string]interface{}) *echo.Echo {
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.LoggerWithConfig(logConfig))
 
-	// 使用 echo.Static 中间件处理静态文件
-	e.Use(middleware.Static(""))
-
 	e.HideBanner = true
 	e.HidePort = lvl > log.INFO // hide the port output if the log level is higher than INFO
 	e.Validator = NewValidator()
@@ -86,7 +83,9 @@ func New(tmplDir fs.FS, extraData map[string]interface{}) *echo.Echo {
 		extraData: extraData,
 	}
 	// 中间件：HTTPS重定向
-	e.Pre(middleware.HTTPSRedirect())
+	//e.Pre(middleware.HTTPSRedirect())
+	// 使用 echo.Static 中间件处理静态文件
+	//e.Use(middleware.Static(util.BasePath))
 
 	return e
 }
