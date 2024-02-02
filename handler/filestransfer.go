@@ -6,7 +6,6 @@ import (
 	"journal/store"
 	"journal/util"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +25,8 @@ func ListFiles(db store.IStore) echo.HandlerFunc {
 		if user.Enable2FA == true && tokentype != "2FA" {
 			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "need to pass 2FA auth first", ""})
 		}
+
+		fileType := c.QueryParam("type")
 		var upload_path string
 		if user.Admin {
 			upload_path = "public"
@@ -33,7 +34,7 @@ func ListFiles(db store.IStore) echo.HandlerFunc {
 			upload_path = filepath.Join("public", "uploads", user.Username)
 		}
 
-		files, _ := util.ListFiles(upload_path)
+		files, _ := util.ListFiles(upload_path, fileType)
 
 		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "read dir ok", files})
 	}
@@ -128,13 +129,8 @@ func DeleteFiles(db store.IStore) echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Bad post data", err.Error()})
 		}
 
-		for _, file := range request.Files {
-			file, _ = url.QueryUnescape(file)
-			// 实现您的文件删除逻辑
-			if err := os.Remove(file); err != nil {
-				fmt.Printf("Deleting file[%s][%v] error: %s\n", file, file, err.Error())
-				return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "remove err:", err.Error()})
-			}
+		if err := util.DeleteFiles(request.Files); err != nil {
+			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "remove err:", err.Error()})
 		}
 
 		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "Files deleted successfully", ""})

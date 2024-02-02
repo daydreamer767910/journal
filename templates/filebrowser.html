@@ -35,6 +35,7 @@
             text-decoration: underline;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/music-metadata@7.14.0/lib/index.min.js"></script>
     <script>
         function sortTable(n) {
             var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
@@ -119,7 +120,12 @@
         });
         
         function refresh() {
-            fetch('/listfile', {
+            // 获取下拉菜单元素
+            const filterSelect = document.getElementById('filter');
+            
+            const selectedValue = filterSelect.value;
+            
+            fetch(`/listfile?type=${selectedValue}` , {
                 method: 'GET',
             })
             .then(response => {
@@ -181,13 +187,56 @@
             console.log('Meta:', meta);
         }
         
+        // 播放所选歌曲
+        function playSelectedSongs() {
+            var selectedFiles = [];
+            var checkboxes = document.querySelectorAll('#fileTable tbody input[type="checkbox"]:checked');
+
+            checkboxes.forEach(function (checkbox) {
+                var row = checkbox.closest('tr');
+                var name = row.cells[1].querySelector('a').getAttribute('href');
+                selectedFiles.push(name);
+            });
+
+            if (selectedFiles.length === 0) {
+                alert('请先选择歌曲');
+                return;
+            }
+
+            let currentIndex = 0;
+            const audioPlayer = document.getElementById('audioPlayer'); // 获取音频播放器元素
+            audioPlayer.src = selectedFiles[currentIndex]; // 设置音频源
+
+            audioPlayer.addEventListener('ended', function() {
+                currentIndex = (currentIndex + 1) % selectedFiles.length;
+                audioPlayer.src = selectedFiles[currentIndex]; // 切换到下一首歌曲
+                audioPlayer.play(); // 播放下一首歌曲
+            });
+
+            audioPlayer.play(); // 播放第一首歌曲
+        }
+
     </script>
-    
+
 </head>
 <body>
     <h1>File Browser</h1>
     <button onclick="deleteSelected()">Delete Selected</button>
     <button onclick="refresh()">Refresh</button>
+    <label for="filter">select the type of files</label>
+    <select id="filter" onchange="refresh()">
+        <option value="">all</option>
+        <option value="video">视频</option>
+        <option value="audio">音频</option>
+        <option value="image">图片</option>
+        <option value="text">文本</option>
+        <option value="app">应用</option>
+    </select>
+    <br>
+    <audio id="audioPlayer" controls></audio>
+    
+    <button onclick="playSelectedSongs()">play seleted medias</button>
+    <br>
     <table id="fileTable">
         <thead>
             <tr>

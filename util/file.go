@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -65,7 +66,7 @@ func GetMediaType(fileName string) string {
 }
 
 // GetVideoDuration 获取视频的长度（持续时间）
-func GetVideoDuration(videoFile string) (float64, error) {
+func getVideoDuration(videoFile string) (float64, error) {
 	output, err := RunCommand("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", "-i", videoFile)
 	if err != nil {
 		return 0, fmt.Errorf("获取视频长度失败: %v", err)
@@ -91,7 +92,7 @@ func GenerateThumbnail(inputFile string, percentages []int, durations []int) err
 	outputFile := filepath.Join(thumbnail_path, base+thumbnailExtension)
 
 	// 获取视频总时长
-	duration, err := GetVideoDuration(inputFile)
+	duration, err := getVideoDuration(inputFile)
 	if err != nil {
 		fmt.Println("错误:", err)
 		return err
@@ -118,7 +119,7 @@ func GenerateThumbnail(inputFile string, percentages []int, durations []int) err
 	return nil
 }
 
-func GetThumbnail(directoryPath string, fileName string) (Thumbnail string, ThumbnailType string) {
+func getThumbnail(directoryPath string, fileName string) (Thumbnail string, ThumbnailType string) {
 	extension := strings.ToLower(filepath.Ext(fileName))
 	base := strings.TrimSuffix(fileName, extension)
 	mType := GetMediaType(fileName)
@@ -135,7 +136,29 @@ func GetThumbnail(directoryPath string, fileName string) (Thumbnail string, Thum
 	return
 }
 
-func ListFiles(directoryPath string) ([]fileInfo, error) {
+func DeleteFiles(files []string) error {
+	for _, file := range files {
+		file, _ = url.QueryUnescape(file)
+		// 实现您的文件删除逻辑
+		if err := os.Remove(file); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+		if strings.Contains(GetMediaType(file), "video") {
+			extension := strings.ToLower(filepath.Ext(file))
+			base := strings.TrimSuffix(filepath.Base(file), extension)
+			path := filepath.Dir(file)
+			Thumbnail := filepath.Join(path, "thumbnail", base+thumbnailExtension)
+			if err := os.Remove(Thumbnail); err != nil {
+				fmt.Println(err.Error())
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func ListFiles(directoryPath string, fileType string) ([]fileInfo, error) {
 
 	var files []fileInfo
 
@@ -155,17 +178,21 @@ func ListFiles(directoryPath string) ([]fileInfo, error) {
 				continue
 			}
 			subDirectoryPath := filepath.Join(directoryPath, entry.Name())
-			subFiles, err := ListFiles(subDirectoryPath)
+			subFiles, err := ListFiles(subDirectoryPath, fileType)
 			if err != nil {
 				return nil, err
 			}
 			files = append(files, subFiles...)
 		} else {
+			result := strings.Split(GetMediaType(entry.Name()), "/")
+			if fileType != "" && fileType != result[0] {
+				continue
+			}
 			// 如果是文件，添加到列表中
 			fileinfo, _ := entry.Info()
 
 			modTimeFormatted := fileinfo.ModTime().Format("2006-01-02 15:04:05")
-			thumbnail, thumbnailtype := GetThumbnail(directoryPath, entry.Name())
+			thumbnail, thumbnailtype := getThumbnail(directoryPath, entry.Name())
 			url := filepath.Join(directoryPath, entry.Name())
 
 			files = append(files, fileInfo{
