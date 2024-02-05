@@ -52,95 +52,19 @@
 				<!-- Main -->
 					<div id="main">
 						<div class="inner">
-							<div class="video-container">
-								<video id="videoContainer" class="video-js" playsinline controls loop muted preload="auto" width="960" height="580">
-									<!-- 如果浏览器不支持 HTML5 video 标签，显示备用信息 -->
-									Your browser does not support HTML5 video.
-								</video>
-							</div>
-							<script src="https://vjs.zencdn.net/7.17.0/video.min.js"></script>
-
-							<script>
-								var videoList; // 全局变量，用于存储视频列表数据
-								var currentIndex = 0;
-								// Fetch video list from backend using AJAX
-								var xhr = new XMLHttpRequest();
-								xhr.open('GET', '/listfile?type=video', true);
-								xhr.onreadystatechange = function() {
-									if (xhr.readyState === XMLHttpRequest.DONE) {
-										if (xhr.status === 200) {
-											var respJson = JSON.parse(xhr.responseText);
-											videoList = respJson.meta;
-											console.log(videoList)
-											
-											// Show the first video initially
-											showVideo(0);
-										} else {
-											console.error('Error fetching video list: ' + xhr.status);
-										}
-									}
-								};
-								xhr.send();
-								// 初始化 Video.js 播放器
-								var videoContainer = videojs('videoContainer', {controlBar:{
-										'currentTimeDisplay':true,
-										'timeDivider':true,
-										'durationDisplay':true,
-										'remainingTimeDisplay':false
-									}}, function(){
-									videojs.log('播放器准备好了!');
-									
-									this.on('ended', function() {
-										videojs.log('播放结束!');
-									});
-									this.on('fullscreenchange', function () {
-										if (videoContainer.isFullscreen()) {
-											// 进入全屏模式时，隐藏 Video.js 控件
-											videoContainer.controlBar.hide();
-										} else {
-											// 退出全屏模式时，显示 Video.js 控件
-											videoContainer.controlBar.show();
-										}
-									});
-								});
-								var prevButton = videoContainer.controlBar.addChild('button');
-								prevButton.addClass('vjs-prev-button');
-								prevButton.el().innerHTML = '<span class="vjs-icon-placeholder"></span><<';
-
-								// 添加按钮点击事件处理程序
-								prevButton.on('pointerdown', function () {
-									// 在这里添加您的逻辑，处理点击"Previous"按钮的操作
-									currentIndex = (currentIndex - 1 + videoList.length) % videoList.length;
-
-									showVideo(currentIndex);
-									console.log('Previous button clicked!');
-								});
-
-								// 添加自定义的"Next"按钮到控制栏
-								var nextButton = videoContainer.controlBar.addChild('button');
-								nextButton.addClass('vjs-next-button');
-								nextButton.el().innerHTML = '<span class="vjs-icon-placeholder"></span>>>';
-
-								// 添加按钮点击事件处理程序
-								nextButton.on('pointerdown', function () {
-									// 在这里添加您的逻辑，处理点击"Next"按钮的操作
-									currentIndex = (currentIndex + 1) % videoList.length;
-
-									showVideo(currentIndex);
-									console.log('Next button clicked!');
-								});
+							<header>
+								<h1>This is Journal, a free, fully responsive site<br />
 								
-								function showVideo(index) {
-									var data = {
-										src: videoList[index].URL,
-										type: 'video/mp4'
-									};
-									
-									videoContainer.src(data);
-									videoContainer.load(data);
-									videoContainer.play()
-								}
-							</script>
+							</header>
+							<section class="tiles">
+								<article class="style2">
+									<h1>Vedio Page</h1>
+										<video id="videoContainer" class="video-js" playsinline controls loop muted preload="auto" width="350" height="300">
+											<!-- 如果浏览器不支持 HTML5 video 标签，显示备用信息 -->
+											Your browser does not support HTML5 video.
+										</video>
+								</article>
+							</section>
 						</div>
 					</div>
 
@@ -188,6 +112,88 @@
 			</div>
 
 		<!-- Scripts -->
+			<script src="https://vjs.zencdn.net/7.17.0/video.min.js"></script>
+			<script>
+				var videoList; // 全局变量，用于存储视频列表数据
+				var currentIndex = 0;
+				// Fetch video list from backend using AJAX
+				var xhr = new XMLHttpRequest();
+				xhr.open('GET', '/listfile?type=video', true);
+				xhr.onreadystatechange = function() {
+					if (xhr.readyState === XMLHttpRequest.DONE) {
+						if (xhr.status === 200) {
+							var respJson = JSON.parse(xhr.responseText);
+							videoList = respJson.meta;
+							console.log(videoList)
+							
+							// Show the first video initially
+							showVideo(0);
+						} else {
+							console.error('Error fetching video list: ' + xhr.status);
+						}
+					}
+				};
+				xhr.send();
+				// 初始化 Video.js 播放器
+				var videoContainer = videojs('videoContainer', {controlBar:{
+						'currentTimeDisplay':true,
+						'timeDivider':true,
+						'durationDisplay':true,
+						'remainingTimeDisplay':false
+					}}, function(){
+					videojs.log('播放器准备好了!');
+					
+					this.on('ended', function() {
+						videojs.log('播放结束!');
+					});
+					this.on('fullscreenchange', function () {
+						if (videoContainer.isFullscreen()) {
+							// 进入全屏模式时，隐藏 Video.js 控件
+							videoContainer.controlBar.hide();
+						} else {
+							// 退出全屏模式时，显示 Video.js 控件
+							videoContainer.controlBar.show();
+						}
+					});
+				});
+				var prevButton = videoContainer.controlBar.addChild('button');
+				prevButton.addClass('vjs-prev-button');
+				prevButton.el().innerHTML = '<span class="vjs-icon-placeholder"></span><<';
+
+				// 添加按钮点击事件处理程序
+				prevButton.on('pointerdown', function () {
+					// 在这里添加您的逻辑，处理点击"Previous"按钮的操作
+					currentIndex = (currentIndex - 1 + videoList.length) % videoList.length;
+
+					showVideo(currentIndex);
+					console.log('Previous button clicked!');
+				});
+
+				// 添加自定义的"Next"按钮到控制栏
+				var nextButton = videoContainer.controlBar.addChild('button');
+				nextButton.addClass('vjs-next-button');
+				nextButton.el().innerHTML = '<span class="vjs-icon-placeholder"></span>>>';
+
+				// 添加按钮点击事件处理程序
+				nextButton.on('pointerdown', function () {
+					// 在这里添加您的逻辑，处理点击"Next"按钮的操作
+					currentIndex = (currentIndex + 1) % videoList.length;
+
+					showVideo(currentIndex);
+					console.log('Next button clicked!');
+				});
+				
+				function showVideo(index) {
+					var data = {
+						src: videoList[index].URL,
+						type: 'video/mp4'
+					};
+					
+					videoContainer.src(data);
+					videoContainer.load(data);
+					videoContainer.play()
+				}
+			</script>
 			<script src="assets/js/jquery.min.js"></script>
 			<script src="assets/js/browser.min.js"></script>
 			<script src="assets/js/breakpoints.min.js"></script>

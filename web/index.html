@@ -140,27 +140,32 @@
 									case 'video':
 										element = document.createElement('video');
 										element.src = videoItem.Thumbnail;
-										element.controls = true;
+										element.alt = videoItem.Name;
+										element.loop = true;
+										element.muted = true;
+										element.preload = "auto";
+										element.autoplay = true;
+										//element.controls = true;
 										break;
 									case 'image':
 										element = document.createElement('img');
-										element.src = videoItem.URL;
+										element.src = videoItem.Thumbnail;
 										element.alt = videoItem.Name;
 										break;
 									case 'application':
 										element = document.createElement('embed');
-										element.src = videoItem.URL;
+										element.src = videoItem.Thumbnail;
 										element.type = videoItem.Type;
 										break;
 									case 'audio':
 										element = document.createElement('audio');
-										element.src = videoItem.URL;
-										element.controls = true;
+										element.src = videoItem.Thumbnail;
+										//element.controls = true;
 										break;
 									default:
 										element = document.createElement('a');
-										element.href = videoItem.URL;
-										element.textContent = 'Download ' + videoItem.Name;
+										element.href = videoItem.Thumbnail;
+										element.textContent = videoItem.Name;
 										break;
 								}
 								element.width = 290;
