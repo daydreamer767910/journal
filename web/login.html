@@ -1,0 +1,144 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Login - Journal</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <link href="favicon.ico" rel="shortcut icon" type="image/x-icon"/>
+    <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+    <style>
+        /* 添加登录表单的边框样式 */
+        form {
+            border: 2px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        /* 添加登录表单的输入框样式 */
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        /* 添加登录表单的提交按钮样式 */
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body class="is-preload">
+    <div id="wrapper">
+        <header id="header">
+            <div class="inner">
+                <a href="index.html" class="logo">
+                    <span class="symbol"><img src="images/logo.svg" alt="" /></span><span class="title">Journal</span>
+                </a>
+                <nav>
+                    <ul>
+                        <li><a href="#menu">Menu</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+        <nav id="menu">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html">Register</a></li>
+                <li><a href="generic.html">Video</a></li>
+                <li><a href="elements.html">Elements</a></li>
+            </ul>
+        </nav>
+        <div id="main">
+            <div class="inner">
+                <header>
+                    <h1>Login to Journal</h1>
+                </header>
+                <section>
+                    <form id="loginForm">
+                        <div class="fields">
+                            <div class="field">
+                                <input type="text" name="username" id="username" placeholder="Username" />
+                            </div>
+                            <div class="field">
+                                <input type="password" name="password" id="password" placeholder="Password" />
+                            </div>
+                        </div>
+                        <ul class="actions">
+                            <li><input type="submit" value="Login" class="button primary solid" /></li>
+                        </ul>
+                        <div class="error-message" id="errorMessage"></div>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // 阻止表单提交
+
+            // 获取用户名和密码
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+
+            // 创建一个 XMLHttpRequest 对象
+            var xhr = new XMLHttpRequest();
+
+            // 设置请求参数
+            xhr.open('POST', '/login', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            // 设置响应处理函数
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200) {
+                        // 登录成功
+                        console.log('登录成功');
+                        // 可以根据服务器返回的数据执行相应的操作，比如页面跳转等
+                        var responseData = JSON.parse(xhr.responseText);
+                        console.log('后台返回的数据：', responseData);
+                        if (responseData.meta && responseData.meta.enable2fa) {
+                            window.location.href = '/auth2fa';
+                        }
+                        if (responseData.meta && !responseData.meta.enable2fa) {
+                            window.location.href = '/';
+                        }
+                    } else {
+                        // 登录失败
+                        console.log('登录失败');
+                        var errorResponse = JSON.parse(xhr.responseText);
+                        var errorMessage = errorResponse.message; 
+                        $('#errorMessage').text(errorMessage || '发生错误，请稍后重试');
+                    }
+                }
+            };
+
+            // 发送登录请求
+            xhr.send(JSON.stringify({ username: username, password: password }));
+        });
+
+    </script>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/browser.min.js"></script>
+    <script src="assets/js/breakpoints.min.js"></script>
+    <script src="assets/js/util.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

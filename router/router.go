@@ -85,7 +85,7 @@ func New(tmplDir fs.FS, extraData map[string]interface{}) *echo.Echo {
 	// 中间件：HTTPS重定向
 	//e.Pre(middleware.HTTPSRedirect())
 	// 使用 echo.Static 中间件处理静态文件
-	//e.Use(middleware.Static(util.BasePath))
+	e.Use(middleware.Static(util.BasePath + "web"))
 
 	return e
 }

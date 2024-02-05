@@ -67,7 +67,7 @@ func DashboardPage(db store.IStore) echo.HandlerFunc {
 	}
 }
 
-func FileBrowser(db store.IStore) echo.HandlerFunc {
+func FileBrowserPage(db store.IStore) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		return c.Render(http.StatusOK, "filebrowser.html", map[string]interface{}{})
 	}

@@ -75,6 +75,7 @@ func main() {
 	// strip the "templates/" prefix from the embedded directory so files can be read by their direct name (e.g.
 	// "base.html" instead of "templates/base.html")
 	tmplDir, _ := fs.Sub(fs.FS(embeddedTemplates), "templates")
+	//bootstrapDir, _ := fs.Sub(fs.FS(embeddedBootstrap), "bootstrap")
 
 	// set app extra data
 	extraData := make(map[string]interface{})
@@ -87,14 +88,14 @@ func main() {
 
 	//app.Group("auth")
 	app.GET(util.BasePath+"/dashboard", handler.DashboardPage(db), handler.ValidJWT)
-	app.GET(util.BasePath, handler.HomePage())
+	//app.GET(util.BasePath, handler.HomePage())
 	app.GET(util.BasePath+"/home", handler.HomePage())
 	app.GET(util.BasePath+"/register", handler.RegisterPage())
 	app.GET(util.BasePath+"/login", handler.LoginPage())
 	app.GET(util.BasePath+"/logout", handler.Logout(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/security", handler.SecurityPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/auth2fa", handler.Auth2FAPage(db), handler.ValidJWT)
-	app.GET(util.BasePath+"/filesbrowser", handler.FileBrowser(db), handler.ValidJWT)
+	app.GET(util.BasePath+"/filesbrowser", handler.FileBrowserPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/listfile", handler.ListFiles(db), handler.ValidJWT)
 
 	app.POST(util.BasePath+"/login", handler.Login(db))

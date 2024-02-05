@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+        <link rel="stylesheet" href="assets/css/main.css" />
+        <link href="favicon.ico" rel="shortcut icon" type="image/x-icon"/>
+        <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+    </head>
+    <body class="is-preload">
+        <div id="wrapper">
+            <header id="header">
+                <div class="inner">
+                    <a href="index.html" class="logo">
+                        <span class="symbol"><img src="images/logo.svg" alt="" /></span><span class="title">Journal</span>
+                    </a>
+                    <nav>
+                        <ul>
+                            <li><a href="#menu">Menu</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            </header>
+            <nav id="menu">
+                <h2>Menu</h2>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="login.html">Login</a></li>
+                    <li><a href="register.html">Register</a></li>
+                    <li><a href="generic.html">Video</a></li>
+                    <li><a href="elements.html">Elements</a></li>
+                </ul>
+            </nav>
+            <div id="main">
+                <div class="inner">
+                    <form>
+                        <div class="form-floating mb-3">
+                            <div class="form-floating mb-3 mb-md-0">
+                                <label for="username">Name: 
+                                <input class="form-control" id="username" type="text" placeholder="Enter your name" />
+                                </label>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3 mb-md-0">
+                                    <label for="password">Password:
+                                    <input class="form-control" id="password" type="password" placeholder="Create a password" />
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3 mb-md-0">
+                                    <label for="passwordConfirm">Confirm Password:
+                                    <input class="form-control" id="passwordConfirm" type="password" placeholder="Confirm password" />
+                                    </label>
+                                </div>
+                                <div id="confirmMessage" class="confirm-message"></div>
+                            </div>
+                        </div>                        
+                        <div class="form-floating mb-3">
+                            <label for="email">Email address:
+                            <input class="form-control" id="email" type="email" placeholder="name@example.com" />
+                            </label>
+                            <div id="emailMessage" class="validation-message"></div>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <label for="phone">Email address:
+                            <input class="form-control" id="phone" type="tel" placeholder="0123456789" />
+                            </label>
+                            <div id="phoneMessage" class="validation-message"></div>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <label for="address">Email address:
+                            <input class="form-control" id="address" type="text" placeholder="Enter your address" />
+                            </label>
+                            <div id="addressMessage" class="validation-message"></div>
+                        </div>
+                        
+                        <div class="mt-4 mb-0">
+                            <div class="d-grid"><a class="button primary solid" onclick="submitForm()">Create Account</a></div>
+                        </div>
+                        <div class="error-message" id="errorMessage"></div>
+                    </form> 
+                </div>
+            </div>
+        </div>
+        <script>
+            $(document).ready(function() {
+                $('#password, #passwordConfirm').on('keyup', function() {
+                    var password = $('#password').val();
+                    var confirmPassword = $('#passwordConfirm').val();
+
+                    if (password !== confirmPassword) {
+                        $('#confirmMessage').text('密码不匹配').css('color', 'red');
+                    } else {
+                        $('#confirmMessage').text('密码匹配').css('color', 'green');
+                    }
+                });
+
+                // 在此添加其他输入框的验证逻辑
+            });
+            function submitForm() {
+                var username = $('#username').val();
+                var password = $('#password').val();
+                var confirmPassword = $('#passwordConfirm').val();
+                var email = $('#email').val();
+                var phone = $('#phone').val();
+                var address = $('#address').val();
+
+                // 检查用户名是否为空
+                if (!username) {
+                    $('#errorMessage').text('请输入用户名');
+                    return;
+                }
+
+                // 检查密码和确认密码是否匹配
+                if (password !== confirmPassword) {
+                    $('#errorMessage').text('密码和确认密码不匹配');
+                    return;
+                }
+
+                // 检查邮箱格式是否正确
+                if (!isValidEmail(email)) {
+                    $('#errorMessage').text('请输入有效的邮箱地址');
+                    return;
+                }
+
+                // 检查电话号码格式是否正确
+                if (!isValidPhone(phone)) {
+                    $('#errorMessage').text('请输入有效的电话号码');
+                    return;
+                }
+
+                // 检查地址是否为空
+                if (!address) {
+                    $('#errorMessage').text('请输入地址');
+                    return;
+                }
+
+                var formData = {
+                    username: username,
+                    password: password,
+                    email: email,
+                    phone: phone,
+                    address: address
+                };
+
+                // 使用 jQuery 的 ajax 方法发送 POST 请求
+                $.ajax({
+                    type: 'POST',
+                    url: 'register', // 根据你的后端路由进行修改
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(data) {
+                        console.log(data);
+                        if (data.status) {
+                            $('#errorMessage').text(data.message);
+                            setTimeout(function() {
+                                window.location.href = '/generic.html';
+                            }, 1500);
+
+                        } else {
+                            $('#errorMessage').text(data.message);
+                        }
+                    },
+                    error: function(error) {
+                        console.error('Error:', error);
+                        $('#errorMessage').text(error.responseJSON.message || '发生错误，请稍后重试');
+                    }
+                });
+            }
+
+            // 验证邮箱格式是否正确
+            function isValidEmail(email) {
+                // 这里可以使用正则表达式来验证邮箱格式
+                return /\S+@\S+\.\S+/.test(email);
+            }
+
+            // 验证电话号码格式是否正确
+            function isValidPhone(phone) {
+                // 这里可以使用正则表达式来验证电话号码格式
+                return /^\d{10,11}$/.test(phone);
+            }
+        </script>
+        <script src="assets/js/jquery.min.js"></script>
+        <script src="assets/js/browser.min.js"></script>
+        <script src="assets/js/breakpoints.min.js"></script>
+        <script src="assets/js/util.js"></script>
+        <script src="assets/js/main.js"></script>
+    </body>
+</html>
