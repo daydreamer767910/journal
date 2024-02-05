@@ -88,16 +88,11 @@ func main() {
 
 	//app.Group("auth")
 	app.GET(util.BasePath+"/dashboard", handler.DashboardPage(db), handler.ValidJWT)
-	//app.GET(util.BasePath, handler.HomePage())
-	app.GET(util.BasePath+"/home", handler.HomePage())
-	app.GET(util.BasePath+"/register", handler.RegisterPage())
-	app.GET(util.BasePath+"/login", handler.LoginPage())
-	app.GET(util.BasePath+"/logout", handler.Logout(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/security", handler.SecurityPage(db), handler.ValidJWT)
-	app.GET(util.BasePath+"/auth2fa", handler.Auth2FAPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/filesbrowser", handler.FileBrowserPage(db), handler.ValidJWT)
-	app.GET(util.BasePath+"/listfile", handler.ListFiles(db), handler.ValidJWT)
 
+	app.GET(util.BasePath+"/logout", handler.Logout(db), handler.ValidJWT)
+	app.GET(util.BasePath+"/listfile", handler.ListFiles(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/login", handler.Login(db))
 	app.POST(util.BasePath+"/register", handler.Register(db))
 	app.POST(util.BasePath+"/auth2fa", handler.Auth2FA(db), handler.ValidJWT)

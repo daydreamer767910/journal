@@ -8,26 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// LoginPage handler
-func HomePage() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		return c.Render(http.StatusOK, "home.html", map[string]interface{}{})
-	}
-}
-
-func RegisterPage() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		return c.Render(http.StatusOK, "register.html", map[string]interface{}{})
-	}
-}
-
-// LoginPage handler
-func LoginPage() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		return c.Render(http.StatusOK, "login.html", map[string]interface{}{})
-	}
-}
-
 func SecurityPage(db store.IStore) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		userid := c.Get("userid").(string)
@@ -40,12 +20,6 @@ func SecurityPage(db store.IStore) echo.HandlerFunc {
 			"username":  user.Username,
 			"enable2fa": user.Enable2FA,
 		})
-	}
-}
-
-func Auth2FAPage(db store.IStore) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		return c.Render(http.StatusOK, "2faverify.html", map[string]interface{}{})
 	}
 }
 

@@ -1,0 +1,86 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>2FA - Journal</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <link href="favicon.ico" rel="shortcut icon" type="image/x-icon"/>
+    <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+    
+</head>
+<body class="is-preload">
+    <div id="wrapper">
+        <header id="header">
+            <div class="inner">
+                <a href="index.html" class="logo">
+                    <span class="symbol"><img src="images/logo.svg" alt="" /></span><span class="title">Journal</span>
+                </a>
+                <nav>
+                    <ul>
+                        <li><a href="#menu">Menu</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+        <nav id="menu">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html">Register</a></li>
+                <li><a href="video.html">Video</a></li>
+                <li><a href="elements.html">Elements</a></li>
+            </ul>
+        </nav>
+        <div id="main">
+            <div class="inner">
+                <header>
+                    <h1>2FA to Journal</h1>
+                </header>
+                <section>
+                    <form id="2faForm">
+                        <div class="row gtr-uniform">
+                            <div class="col-6 col-12-xsmall">
+                                <input type="text" name="2fa-code" id="2facode" value="" placeholder="123456" />
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <ul class="actions">
+                                <li><input type="submit" value="2fasubmit" class="button primary solid" /></li>
+                            </ul>
+                            <div class="error-message" id="errorMessage"></div>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Verify 2FA
+        document.getElementById('2faForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // 阻止表单提交
+            var code = document.getElementById('2facode').value;
+            $.ajax({
+                method: 'POST',
+                url: '/auth2fa',
+                contentType: 'application/json',
+                data: JSON.stringify({ code: code }),
+                success: function (data) {
+                    //alert("2FA code verified. Access granted!");
+                    window.location.href = "/"; // 替换成你的目标页面路径
+                },
+                error: function (error) {
+                    $('#errorMessage').text(error.responseText || 'Verify 2FA failed');
+                }
+            });
+        });
+    </script>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/browser.min.js"></script>
+    <script src="assets/js/breakpoints.min.js"></script>
+    <script src="assets/js/util.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

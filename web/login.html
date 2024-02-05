@@ -61,7 +61,7 @@
                 <li><a href="index.html">Home</a></li>
                 <li><a href="login.html">Login</a></li>
                 <li><a href="register.html">Register</a></li>
-                <li><a href="generic.html">Video</a></li>
+                <li><a href="video.html">Video</a></li>
                 <li><a href="elements.html">Elements</a></li>
             </ul>
         </nav>
@@ -115,7 +115,7 @@
                         var responseData = JSON.parse(xhr.responseText);
                         console.log('后台返回的数据：', responseData);
                         if (responseData.meta && responseData.meta.enable2fa) {
-                            window.location.href = '/auth2fa';
+                            window.location.href = '/auth2fa.html';
                         }
                         if (responseData.meta && !responseData.meta.enable2fa) {
                             window.location.href = '/';
