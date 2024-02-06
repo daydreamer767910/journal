@@ -34,6 +34,8 @@ RUN apk update && \
 # 复制构建阶段生成的文件到生产镜像中
 WORKDIR /app
 COPY --from=builder /build/journal .
+COPY web /app/web
+COPY db/server /app/db/server
 
 # Optional:
 # To bind to a TCP port, runtime parameters must be supplied to the docker command.
