@@ -14,5 +14,4 @@ services:
       - ./db:/app/db
       - ./public:/app/public
       - ./logs:/app/logs
-      - ./web:/app/web
 

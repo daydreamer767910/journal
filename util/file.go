@@ -124,7 +124,7 @@ func getThumbnail(directoryPath string, fileName string) (Thumbnail string, Thum
 	base := strings.TrimSuffix(fileName, extension)
 	mType := GetMediaType(fileName)
 	if mType == "unknown" {
-		Thumbnail = "/static/ufo.png"
+		Thumbnail = "/assets/ufo.png"
 		ThumbnailType = extension
 	} else if strings.Contains(mType, "video") {
 		Thumbnail = filepath.Join(directoryPath, "thumbnail", base+thumbnailExtension)

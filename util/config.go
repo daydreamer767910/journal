@@ -17,3 +17,11 @@ const (
 	DefaultPassword = "123456"
 	DefaultIsAdmin  = true
 )
+
+var (
+	DefaultThumbnailCfg = []model.ThumbnailConf{
+		{PercentPosition: 5, Duration: 2},
+		{PercentPosition: 25, Duration: 2},
+		{PercentPosition: 45, Duration: 2},
+	}
+)

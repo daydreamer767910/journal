@@ -20,10 +20,10 @@ import (
 //go:embed templates/*
 var embeddedTemplates embed.FS
 
-// embed the "assets" directory
+// embed the "web" directory
 //
-//go:embed assets/*
-var embeddedAssets embed.FS
+//go:embed web/*
+var embeddedWeb embed.FS
 
 var (
 	// command-line banner information
@@ -104,10 +104,16 @@ func main() {
 
 	// strip the "assets/" prefix from the embedded directory so files can be called directly without the "assets/"
 	// prefix
-	assetsDir, _ := fs.Sub(fs.FS(embeddedAssets), "assets")
-	assetHandler := http.FileServer(http.FS(assetsDir))
+	//assetsDir, _ := fs.Sub(fs.FS(embeddedAssets), "assets")
+	//assetHandler := http.FileServer(http.FS(assetsDir))
 	// serves other static files
-	app.GET(util.BasePath+"/static/*", echo.WrapHandler(http.StripPrefix(util.BasePath+"/static/", assetHandler)))
+	//app.GET(util.BasePath+"/static/*", echo.WrapHandler(http.StripPrefix(util.BasePath+"/static/", assetHandler)))
+
+	webDir, _ := fs.Sub(fs.FS(embeddedWeb), "web")
+	webHandler := http.FileServer(http.FS(webDir))
+	// serves other static files
+	app.GET(util.BasePath+"/*", echo.WrapHandler(http.StripPrefix(util.BasePath, webHandler)))
+
 	app.GET(util.BasePath+"/public/*",
 		echo.WrapHandler(http.StripPrefix(util.BasePath+"/public/", http.FileServer(http.Dir(util.BasePath+"public")))),
 		handler.ValidJWT)

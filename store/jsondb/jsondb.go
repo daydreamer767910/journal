@@ -47,6 +47,7 @@ func (o *JsonDB) Init() error {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		srvConf := new(model.ServerConf)
 		srvConf.JwtSecret = util.JwtSecret
+		srvConf.ThumbnailCfg = util.DefaultThumbnailCfg
 		o.conn.Write("server", "config", srvConf)
 		os.Chmod(configPath, 0600)
 	}
