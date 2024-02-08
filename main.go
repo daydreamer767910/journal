@@ -102,13 +102,6 @@ func main() {
 	app.POST(util.BasePath+"/upload", handler.Upload(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/delete", handler.DeleteFiles(db), handler.ValidJWT)
 
-	// strip the "assets/" prefix from the embedded directory so files can be called directly without the "assets/"
-	// prefix
-	//assetsDir, _ := fs.Sub(fs.FS(embeddedAssets), "assets")
-	//assetHandler := http.FileServer(http.FS(assetsDir))
-	// serves other static files
-	//app.GET(util.BasePath+"/static/*", echo.WrapHandler(http.StripPrefix(util.BasePath+"/static/", assetHandler)))
-
 	webDir, _ := fs.Sub(fs.FS(embeddedWeb), "web")
 	webHandler := http.FileServer(http.FS(webDir))
 	// serves other static files

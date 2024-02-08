@@ -1,40 +1,15 @@
-<!DOCTYPE html>
-{{ template "base" . }}
-<html lang="en">
+<!DOCTYPE HTML>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Setting</title>
-    
-    <style>
-        body {
-            background-color: #f0f8ff;
-            display: flex;
-            flex-direction: column; /* 设置主轴方向为垂直 */
-            align-items: center;
-            justify-content: center;
-            height: 100vh; /* 修改为 100vh，以确保整个页面高度占满视口 */
-            margin: 0;
-        }
-
-        #SecurityFrame {
-            display: flex;
-            flex-direction: column; /* 设置主轴方向为垂直 */
-            align-items: left;
-            justify-content: center;
-        }
-        button {
-            margin: 5px;
-            padding: 8px;
-            cursor: pointer;
-        }
-
-        input[type="password"] {
-            padding: 5px;
-            margin: 5px;
-        }
-        /* Modal styles */
+    <title>Security setting - Journal</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <link href="assets/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
+    <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+	<style>
+		/* Modal styles */
         .modal {
             display: none;
             position: fixed;
@@ -71,174 +46,218 @@
             text-decoration: none;
             cursor: pointer;
         }
-        #messageContainer {
-            margin-top: 10px;
-            color: rgb(163, 30, 30);
-            font-weight: bold;
-        }
-    </style>
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+	</style>
 </head>
-<body>
-
-<div id="SecurityFrame">
-    <div id="2faSection">
-        <h2>2-Factor Configuration</h2>
-        <br>
-        <button type="button" id="disable2faButton" {{ if not .enable2fa }}disabled{{end}}>Disable 2FA</button>
-       
-        <button type="button" id="enable2faButton" {{ if .enable2fa }}disabled{{end}}>Enable 2FA</button>
-        <br>
-        <button type="button" id="displayQR" {{ if not .enable2fa }}disabled{{end}}>display QR</button>
-        <br>
-        <!-- Element to display the 2FA secret -->
-        <textarea id="2faSecret" cols="60" rows="4" readonly></textarea>
-        <br>
-        
-        <!-- Container for displaying the QR code -->
-        <!-- Modal -->
-        <div id="qrModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal()">&times;</span>
-                
-                <div id="qrcode-container"></div>
+<body class="is-preload">
+    <div id="wrapper">
+        <header id="header">
+            <div class="inner">
+                <a href="index.html" class="logo">
+                    <span class="symbol"><img src="images/logo.svg" alt="" /></span><span class="title">Journal</span>
+                </a>
+                <nav>
+                    <ul>
+                        <li><a href="#menu">Menu</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+        <nav id="menu">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html">Register</a></li>
+                <li><a href="video.html">Video</a></li>
+                <li><a href="elements.html">Elements</a></li>
+            </ul>
+        </nav>
+        <div id="main">
+            <div class="inner">
+                <header>
+                    <h1>Security setting - Journal</h1>
+                </header>
+				<div id="SecurityFrame">
+					<div id="2faSection">
+						<h2>2-Factor Configuration</h2>
+						<br>
+						<button type="button" id="disable2faButton" {{ if not .enable2fa }}disabled{{end}}>Disable 2FA</button>
+					
+						<button type="button" id="enable2faButton" {{ if .enable2fa }}disabled{{end}}>Enable 2FA</button>
+						<br>
+						<button type="button" id="displayQR" {{ if not .enable2fa }}disabled{{end}}>display QR</button>
+						<br>
+						<!-- Element to display the 2FA secret -->
+						<textarea id="2faSecret" cols="60" rows="4" readonly></textarea>
+						<br>
+						<div id="messageContainer"></div>
+						<!-- Container for displaying the QR code -->
+						<!-- Modal -->
+						<div id="qrModal" class="modal">
+							<div class="modal-content">
+								<span class="close" onclick="closeModal()">&times;</span>
+								
+								<div id="qrcode-container"></div>
+							</div>
+						</div>
+					</div>
+					<div id="PasswordSection"></div>
+					<h2>Password</h2>
+						<br>
+						<form id="changePasswordForm">
+							<label for="oldPassword">Old Password: </label>
+							<input type="password" id="oldPassword" name="oldPassword" required>
+							<br>
+							<br>
+							<label for="newPassword">New Password:</label>
+							<input type="password" id="newPassword" name="newPassword" required>
+							<label for="newPasswordCfm">New Password Confirm:</label>
+							<input type="password" id="newPasswordCfm" name="newPasswordCfm" required>
+							<br>
+							<br>
+							<input type="submit" value="Change Password">
+						</form>
+                        <div id="PasswordmessageContainer"></div>
+					</div>
+				</div>
             </div>
         </div>
     </div>
-    <div id="PasswordSection"></div>
-    <h2>Password</h2>
-        <br>
-        <form id="changePasswordForm">
-            <label for="oldPassword">Old Password: </label>
-            <input type="password" id="oldPassword" name="oldPassword" required>
-            <br>
-            <br>
-            <label for="newPassword">New Password:</label>
-            <input type="password" id="newPassword" name="newPassword" required>
-            <br>
-            <br>
-            <input type="submit" value="Change Password">
-        </form>
-    </div>
-    <br>
-    <div id="messageContainer"></div>
-</div>
+	<script src="assets/js/jquery.min.js"></script>
+	<script>
+		// Initially hide the QR code container
+		$("#qrcode-container").hide();
 
+		$("#displayQR").click(function () {
+			// Show the modal
+			$("#qrModal").css("display", "block");
+		});
 
-<script>
-    // Initially hide the QR code container
-    $("#qrcode-container").hide();
+		// Enable 2FA
+		$("#enable2faButton").click(function () {
+			$.ajax({
+				method: 'POST',
+				url: '/enable2fa',
+				contentType: 'application/json',
+				
+				success: function (data) {
+					$("#messageContainer").html("2FA enabled. Scan the QR code in your authenticator app. The QR code will never show after.");
 
-    $("#displayQR").click(function () {
-        // Show the modal
-        $("#qrModal").css("display", "block");
-    });
+					// Display data.message in the label for "key"
+					$("label[for='key']").text("2FA feature is enabled");
 
-    // Enable 2FA
-    $("#enable2faButton").click(function () {
-        $.ajax({
-            method: 'POST',
-            url: '/enable2fa',
-            contentType: 'application/json',
-            
-            success: function (data) {
-                $("#messageContainer").html("2FA enabled. Scan the QR code in your authenticator app. The QR code will never show after.");
+					// Display the 2FA secret
+					$("#2faSecret").val("Your 2FA secret: " + data.meta);
 
-                // Display data.message in the label for "key"
-                $("label[for='key']").text("2FA feature is enabled");
+					// Clear the existing QR code in the container
+					$("#qrcode-container").empty();
+					// Show the modal
+					$("#qrModal").css("display", "block");
+					// Display QR code using the qrcode.js library in the specified container
+					const qr = new QRCode(document.getElementById("qrcode-container"), data.message);
+					
+					// Show the QR code container
+					$("#qrcode-container").show();
+					
+					// Disable the "Enable 2FA" button and enable the "Disable 2FA" button
+					$("#enable2faButton").prop("disabled", true);
+					$("#disable2faButton").prop("disabled", false);
+					$("#displayQR").prop("disabled", false);
+				},
+				error: function (error) {
+					$("#messageContainer").html("Enable 2FA failed: " + error.responseText);
+					
+				}
+			});
+		});
 
-                // Display the 2FA secret
-                $("#2faSecret").val("Your 2FA secret: " + data.meta);
+		// Close the modal
+		function closeModal() {
+			$("#qrModal").css("display", "none");
+		}
 
-                // Clear the existing QR code in the container
-                $("#qrcode-container").empty();
-                // Show the modal
-                $("#qrModal").css("display", "block");
-                // Display QR code using the qrcode.js library in the specified container
-                const qr = new QRCode(document.getElementById("qrcode-container"), data.message);
-                
-                // Show the QR code container
-                $("#qrcode-container").show();
-                
-                // Disable the "Enable 2FA" button and enable the "Disable 2FA" button
-                $("#enable2faButton").prop("disabled", true);
-                $("#disable2faButton").prop("disabled", false);
-                $("#displayQR").prop("disabled", false);
-            },
-            error: function (error) {
-                $("#messageContainer").html("Enable 2FA failed: " + error.responseText);
-                
-            }
-        });
-    });
+		// Close the modal if the user clicks outside of it
+		$(window).click(function (event) {
+			if (event.target.id === "qrModal") {
+				closeModal();
+			}
+		});
+		// Disable 2FA
+		$("#disable2faButton").click(function () {
+			$.ajax({
+				method: 'POST',
+				url: '/disable2fa',
+				contentType: 'application/json',
+				
+				success: function (data) {
+					// Hide the QR code container
+					$("#qrcode-container").hide();
+					
+					// Clear the 2FA secret
+					$("#2faSecret").val("");
 
-    // Close the modal
-    function closeModal() {
-        $("#qrModal").css("display", "none");
-    }
+					// Enable the "Enable 2FA" button and disable the "Disable 2FA" button
+					$("#enable2faButton").prop("disabled", false);
+					$("#disable2faButton").prop("disabled", true);
+					$("#displayQR").prop("disabled", true);
 
-    // Close the modal if the user clicks outside of it
-    $(window).click(function (event) {
-        if (event.target.id === "qrModal") {
-            closeModal();
-        }
-    });
-    // Disable 2FA
-    $("#disable2faButton").click(function () {
-        $.ajax({
-            method: 'POST',
-            url: '/disable2fa',
-            contentType: 'application/json',
-            
-            success: function (data) {
-                // Hide the QR code container
-                $("#qrcode-container").hide();
-                
-                // Clear the 2FA secret
-                $("#2faSecret").val("");
+					$("#messageContainer").html("2FA feature is disabled");
+				},
+				error: function (error) {
+					$("#messageContainer").html("Disable 2FA failed: " + error.responseText);
+				
+				}
+			});
+		});
+		$(document).ready(function() {
+			$('#newPassword, #newPasswordCfm').on('keyup', function() {
+				var newpassword = $('#newPassword').val();
+				var confirmPassword = $('#newPasswordCfm').val();
 
-                // Enable the "Enable 2FA" button and disable the "Disable 2FA" button
-                $("#enable2faButton").prop("disabled", false);
-                $("#disable2faButton").prop("disabled", true);
-                $("#displayQR").prop("disabled", true);
+				if (newpassword !== confirmPassword) {
+					$('#PasswordmessageContainer').text('密码不匹配').css('color', 'red');
+				} else {
+					$('#PasswordmessageContainer').text('密码匹配').css('color', 'green');
+				}
+			});
 
-                $("#messageContainer").html("2FA feature is disabled");
-            },
-            error: function (error) {
-                $("#messageContainer").html("Disable 2FA failed: " + error.responseText);
-            
-            }
-        });
-    });
-    // 在合适的位置添加以下 JavaScript 代码
-    $("#changePasswordForm").submit(function (event) {
-        event.preventDefault();
+			// 在此添加其他输入框的验证逻辑
+		});
+		$("#changePasswordForm").submit(function (event) {
+			event.preventDefault();
 
-        var oldPassword = $('#oldPassword').val();
-        var newPassword = $('#newPassword').val();
+			var oldPassword = $('#oldPassword').val();
+			var newPassword = $('#newPassword').val();
+			var confirmPassword = $('#newPasswordCfm').val();
+			if (newPassword !== confirmPassword) {
+				$('#PasswordmessageContainer').text('2次输入新密码不匹配');
+				return;
+			}
 
-        $.ajax({
-            method: 'POST',
-            url: '/changepassword',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                oldPassword: oldPassword,
-                newPassword: newPassword
-            }),
-            success: function (data) {
-                $("#messageContainer").html("Password changed successfully!");
+			$.ajax({
+				method: 'POST',
+				url: '/changepassword',
+				contentType: 'application/json',
+				data: JSON.stringify({
+					oldPassword: oldPassword,
+					newPassword: newPassword
+				}),
+				success: function (data) {
+					$("#PasswordmessageContainer").html("Password changed successfully!");
 
-            },
-            error: function (error) {
-                $("#messageContainer").html("Password change failed: " + error.responseText);
+				},
+				error: function (error) {
+					$("#PasswordmessageContainer").html("Password change failed: " + error.responseText);
 
-            }
-        });
-    });
+				}
+			});
+		});
 
-</script>
-
+	</script>
+    
+    <script src="assets/js/browser.min.js"></script>
+    <script src="assets/js/breakpoints.min.js"></script>
+    <script src="assets/js/util.js"></script>
+    <script src="assets/js/main.js"></script>
 </body>
 </html>
-
