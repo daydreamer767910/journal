@@ -40,13 +40,9 @@
 					<nav id="menu">
 						<h2>Menu</h2>
 						<ul>
-							<li><a href="index.html">Home</a></li>
 							<li><a href="login.html">Login</a></li>
 							<li><a href="register.html">Register</a></li>
-							<li><a href="video.html">Video</a></li>
 							<li><a href="elements.html">Elements</a></li>
-							<li><a href="dashboard">Dashboard</a></li>
-							<li><a href="logout.html">Logout</a></li>
 						</ul>
 					</nav>
 
@@ -57,8 +53,27 @@
 								<h1>This is Journal, a free, fully responsive site<br />
 								
 							</header>
-							<section class="tiles">
-								
+							<!-- Image -->
+							<section>
+								<h2>Image</h2>
+								<h3>Fit</h3>
+								<div class="box alt">
+									<div class="row gtr-uniform">
+										<div class="col-12"><span class="image fit"><img src="images/pic13.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic01.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic02.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic03.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic03.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic01.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic02.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic02.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic03.jpg" alt="" /></span></div>
+										<div class="col-4"><span class="image fit"><img src="images/pic01.jpg" alt="" /></span></div>
+									</div>
+								</div>
+								<h3>Left &amp; Right</h3>
+								<p><span class="image left"><img src="images/pic14.jpg" alt="" /></span>Fringilla nisl. Donec accumsan interdum nisi, quis tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent. Donec accumsan interdum nisi, quis tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent.</p>
+								<p><span class="image right"><img src="images/pic15.jpg" alt="" /></span>Fringilla nisl. Donec accumsan interdum nisi, quis tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent. Donec accumsan interdum nisi, quis tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent tincidunt felis sagittis eget. tempus euismod. Vestibulum ante ipsum primis in faucibus vestibulum. Blandit adipiscing eu felis iaculis volutpat ac adipiscing accumsan eu faucibus. Integer ac pellentesque praesent.</p>
 							</section>
 						</div>
 					</div>
@@ -107,116 +122,7 @@
 			</div>
 
 		<!-- Scripts -->
-			<script>
-				var videoList; // 全局变量，用于存储video,audio,pic,pdf,txt...列表数据
-				var currentIndex = 0;
-				var container = document.querySelector('.tiles');
-				function getVideoList(callback) {
-					var xhr = new XMLHttpRequest();
-					xhr.open('GET', '/listfile?type=', true);
-					xhr.onreadystatechange = function() {
-						if (xhr.readyState === XMLHttpRequest.DONE) {
-							if (xhr.status === 200) {
-								var respJson = JSON.parse(xhr.responseText);
-								var videoList = respJson.meta;
-								//console.log(videoList);
-								callback(videoList); // 调用回调函数，并传入视频列表数据
-							} else {
-								console.error('Error fetching video list: ' + xhr.status);
-							}
-						}
-					};
-					xhr.send();
-				}
-				// 当页面加载完成后执行
-				document.addEventListener('DOMContentLoaded', function() {
-					getVideoList(function(videoList) {
-						if (videoList && videoList.length > 0) {
-							var videoIndex = 0;
-							videoList.forEach(function(videoItem) {
-								var typeCategory = videoItem.Type.split('/')[0];
-								var element;
-								
-								// 根据项的类型来决定创建什么样的控件
-								switch(typeCategory) {
-									case 'video':
-										element = document.createElement('video');
-										element.src = videoItem.Thumbnail;
-										element.alt = videoItem.Name;
-										element.loop = true;
-										element.muted = true;
-										element.preload = "auto";
-										element.autoplay = true;
-										//element.controls = true;
-										break;
-									case 'image':
-										element = document.createElement('img');
-										element.src = videoItem.Thumbnail;
-										element.alt = videoItem.Name;
-										break;
-									case 'application':
-										element = document.createElement('embed');
-										element.src = videoItem.Thumbnail;
-										element.type = videoItem.Type;
-										break;
-									case 'audio':
-										element = document.createElement('audio');
-										element.src = videoItem.Thumbnail;
-										//element.controls = true;
-										break;
-									default:
-										element = document.createElement('a');
-										element.href = videoItem.Thumbnail;
-										element.textContent = videoItem.Name;
-										break;
-								}
-								element.width = 290;
-								element.height = 250;
-								createArtical(videoIndex,element,videoItem);
-								videoIndex++;
-							});
-						} else {
-							console.log('No data available.');
-						}
-					});
-				});
-				function createArtical(index,element,videoItem) {
-					// 创建新的<article>元素
-					var article = document.createElement('article');
-					article.classList.add('style'+(index%15+1)); // 添加style类
-					// 创建<span>元素并添加图片
-					var span = document.createElement('span');
-					span.classList.add('image');
-					var img = document.createElement('img');
-					img.src = "images/pic"+('0' + (index % 15 + 1)).slice(-2)+".jpg";
-					//img.alt = videoItem.Name;
-					span.appendChild(img);
-					// 创建<a>元素
-					var a = document.createElement('a');
-					a.href = videoItem.URL;
-					// 创建<h2>元素
-					var h2 = document.createElement('h2');
-					var maxLength = 20; // 假设最大长度为 20
-					var displayName = videoItem.Name.length > maxLength ? videoItem.Name.substring(0, maxLength) + '...' : videoItem.Name;
-					h2.textContent = displayName;
-					//h2.title  = videoItem.Name;
-					// 创建<div>元素
-					var div = document.createElement('div');
-					div.classList.add('content');
-					div.appendChild(element);
-					
-					// 添加所有元素到<a>元素
-					a.appendChild(h2);
-					a.appendChild(div);
-					
-					// 添加<a>元素和<span>元素到<article>元素
-					article.appendChild(span);
-					article.appendChild(a);
-					
-					// 将<article>元素添加到容器中
-					container.appendChild(article);
-				}
-			</script>
+			
 			<script src="assets/js/jquery.min.js"></script>
 			<script src="assets/js/browser.min.js"></script>
 			<script src="assets/js/breakpoints.min.js"></script>

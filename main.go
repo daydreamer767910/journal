@@ -86,7 +86,7 @@ func main() {
 	// register routes
 	app := router.New(tmplDir, extraData)
 
-	//app.Group("auth")
+	app.GET(util.BasePath+"/home", handler.HomePage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/dashboard", handler.DashboardPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/security", handler.SecurityPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/filesbrowser", handler.FileBrowserPage(db), handler.ValidJWT)

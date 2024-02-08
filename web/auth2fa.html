@@ -29,7 +29,6 @@
                 <li><a href="index.html">Home</a></li>
                 <li><a href="login.html">Login</a></li>
                 <li><a href="register.html">Register</a></li>
-                <li><a href="video.html">Video</a></li>
                 <li><a href="elements.html">Elements</a></li>
             </ul>
         </nav>
@@ -69,7 +68,7 @@
                 data: JSON.stringify({ code: code }),
                 success: function (data) {
                     //alert("2FA code verified. Access granted!");
-                    window.location.href = "/"; // 替换成你的目标页面路径
+                    window.location.href = "/home"; // 替换成你的目标页面路径
                 },
                 error: function (error) {
                     $('#errorMessage').text(error.responseText || 'Verify 2FA failed');
