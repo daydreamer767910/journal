@@ -1,12 +1,5 @@
-<!DOCTYPE HTML>
-<html>
+{{ template "base" . }}
 <head>
-    <title>Security setting - Journal</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-    <link rel="stylesheet" href="assets/css/main.css" />
-    <link href="assets/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
-    <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
     <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
 	<style>
 		/* Modal styles */
@@ -50,28 +43,6 @@
 </head>
 <body class="is-preload">
     <div id="wrapper">
-        <header id="header">
-            <div class="inner">
-                <a href="index.html" class="logo">
-                    <span class="symbol"><img src="images/logo.svg" alt="" /></span><span class="title">Journal</span>
-                </a>
-                <nav>
-                    <ul>
-                        <li><a href="#menu">Menu</a></li>
-                    </ul>
-                </nav>
-            </div>
-        </header>
-        <nav id="menu">
-            <h2>Menu</h2>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="login.html">Login</a></li>
-                <li><a href="register.html">Register</a></li>
-                <li><a href="video.html">Video</a></li>
-                <li><a href="elements.html">Elements</a></li>
-            </ul>
-        </nav>
         <div id="main">
             <div class="inner">
                 <header>
@@ -103,9 +74,7 @@
 					</div>
 					<div id="PasswordSection"></div>
 					<h2>Password</h2>
-						<br>
 						<form id="changePasswordForm">
-                            <div id="PasswordmessageContainer"></div>
 							<label for="oldPassword">Old Password: </label>
 							<input type="password" id="oldPassword" name="oldPassword" required>
 							<label for="newPassword">New Password:</label>
@@ -114,12 +83,13 @@
 							<input type="password" id="newPasswordCfm" name="newPasswordCfm" required>
 							<input type="submit" value="Change Password">
 						</form>
+                        <div id="PasswordmessageContainer"></div>
 					</div>
 				</div>
             </div>
         </div>
     </div>
-	<script src="assets/js/jquery.min.js"></script>
+	
 	<script>
 		// Initially hide the QR code container
 		$("#qrcode-container").hide();
@@ -250,10 +220,5 @@
 		});
 
 	</script>
-    
-    <script src="assets/js/browser.min.js"></script>
-    <script src="assets/js/breakpoints.min.js"></script>
-    <script src="assets/js/util.js"></script>
-    <script src="assets/js/main.js"></script>
 </body>
-</html>
+

@@ -3,47 +3,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="/static/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <link href="assets/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
+    <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
     <title>{{ .username }}</title>
 </head>
 
-<body>
-
-<!-- 导航按钮 -->
-<div style="position: absolute; top: 10px; right: 10px;">
-    <button onclick="goBack()">Back</button>
-    <a href="/"><button>Home</button></a>
-    <button onclick="logout()">Logout</button>
-</div>
-
-
-
-<script>
-    function goBack() {
-        window.history.back();
-    }
-
-    function logout() {
-        // 发送 GET 请求到 /logout
-        fetch('/logout', {
-            method: 'GET',
-            credentials: 'include'  // 包括跨域请求时发送凭据（如Cookie）
-        })
-        .then(response => {
-            // 处理响应，可以根据需要执行其他操作
-            console.log('Logout successful');
-            // 可以重定向到登录页面等
-            window.location.href = '/home';
-        })
-        .catch(error => {
-            console.error('Logout failed', error);
-        });
-    }
-</script>
-
+<body class="is-preload">
+    <div id="wrapper">
+        <header id="header">
+            <div class="inner">
+                <a href="index.html" class="logo">
+                    <span class="symbol"><img src="images/logo.svg" alt="" /></span><span class="title">Journal</span>
+                </a>
+                <nav>
+                    <ul>
+                        <li><a href="#menu">Menu</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+        <nav id="menu">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html">Register</a></li>
+                <li><a href="logout.html">Logout</a></li>
+            </ul>
+        </nav>
+    </div>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/browser.min.js"></script>
+    <script src="assets/js/breakpoints.min.js"></script>
+    <script src="assets/js/util.js"></script>
+    <script src="assets/js/main.js"></script>
 </body>
 </html>
 {{end}}
