@@ -110,7 +110,7 @@
             const selectedValue = filterSelect.value;
             
             fetch(`/listfile?type=${selectedValue}` , {
-                method: 'GET',
+                method: 'POST',
             })
             .then(response => {
                 if (!response.ok) {
@@ -147,7 +147,7 @@
                             `<img src="${file.Thumbnail}" alt="image" width="320px" height="240px"/>`
                             :
                             `<object type="${file.ThumbnailType}" data="${file.Thumbnail}" width="320px" height="240px"> \
-                                <img src="/static/ufo.png" alt="useful image description" sizes="320px, 240px"/> \
+                                <img src="/assets/ufo.png" alt="useful image description" sizes="320px, 240px"/> \
                             </object> `}
                             <a href="${file.URL}">${file.Name}</a>
                         </td>

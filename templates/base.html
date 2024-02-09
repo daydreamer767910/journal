@@ -25,15 +25,7 @@
                 </nav>
             </div>
         </header>
-        <nav id="menu">
-            <h2>Menu</h2>
-            <ul>
-                <li><a href="home">Home</a></li>
-                <li><a href="video.html">Video</a></li>
-                <li><a href="dashboard">Dashboard</a></li>
-                <li><a href="logout.html">Logout</a></li>
-            </ul>
-        </nav>
+        {{ template "menu" . }}
     </div>
     <script src="assets/js/jquery.min.js"></script>
     <script src="assets/js/browser.min.js"></script>

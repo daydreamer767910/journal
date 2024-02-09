@@ -24,7 +24,7 @@
 			var container = document.querySelector('.tiles');
 			function getVideoList(callback) {
 				var xhr = new XMLHttpRequest();
-				xhr.open('GET', '/listfile?type=', true);
+				xhr.open('POST', '/listfile?type=', true);
 				xhr.onreadystatechange = function() {
 					if (xhr.readyState === XMLHttpRequest.DONE) {
 						if (xhr.status === 200) {

@@ -1,0 +1,41 @@
+{{ template "base" . }}
+<body class="is-preload">
+    <div id="wrapper">
+        <div id="main">
+            <div class="inner">
+                <header>
+                    <h1>Logout to Journal</h1>
+                </header>
+                <section>
+					<div class="col-12">
+						<div class="warning-message" id="warning">Are yuo sure to logout?</div>
+						<ul class="actions">
+							<li><input type="submit" onclick="logout()" class="button primary solid" /></li>
+						</ul>
+						
+					</div>
+                </section>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function logout() {
+			// 发送 GET 请求到 /logout
+			fetch('/logout', {
+				method: 'POST',
+				credentials: 'include'  // 包括跨域请求时发送凭据（如Cookie）
+			})
+			.then(response => {
+				// 处理响应，可以根据需要执行其他操作
+				console.log('Logout successful');
+				// 可以重定向到登录页面等
+				window.location.href = '/';
+			})
+			.catch(error => {
+				console.error('Logout failed', error);
+			});
+		}
+    </script>
+</body>
+

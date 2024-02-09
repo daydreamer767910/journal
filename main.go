@@ -85,14 +85,18 @@ func main() {
 
 	// register routes
 	app := router.New(tmplDir, extraData)
-
+	app.GET(util.BasePath+"/login", handler.LoginPage(db))
+	app.GET(util.BasePath+"/register", handler.RegisterPage(db))
 	app.GET(util.BasePath+"/home", handler.HomePage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/dashboard", handler.DashboardPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/security", handler.SecurityPage(db), handler.ValidJWT)
+	app.GET(util.BasePath+"/auth2fa", handler.Auth2FAPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/filesbrowser", handler.FileBrowserPage(db), handler.ValidJWT)
+	app.GET(util.BasePath+"/video", handler.VideoPage(db), handler.ValidJWT)
+	app.GET(util.BasePath+"/logout", handler.LogoutPage(db), handler.ValidJWT)
 
-	app.GET(util.BasePath+"/logout", handler.Logout(db), handler.ValidJWT)
-	app.GET(util.BasePath+"/listfile", handler.ListFiles(db), handler.ValidJWT)
+	app.POST(util.BasePath+"/listfile", handler.ListFiles(db), handler.ValidJWT)
+	app.POST(util.BasePath+"/logout", handler.Logout(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/login", handler.Login(db))
 	app.POST(util.BasePath+"/register", handler.Register(db))
 	app.POST(util.BasePath+"/auth2fa", handler.Auth2FA(db), handler.ValidJWT)
@@ -107,10 +111,11 @@ func main() {
 	// serves other static files
 	app.GET(util.BasePath+"/*", echo.WrapHandler(http.StripPrefix(util.BasePath, webHandler)))
 
-	app.GET(util.BasePath+"/public/*",
-		echo.WrapHandler(http.StripPrefix(util.BasePath+"/public/", http.FileServer(http.Dir(util.BasePath+"public")))),
-		handler.ValidJWT)
-
+	publicHandler := http.StripPrefix(util.BasePath+"/public/", http.FileServer(http.Dir(util.BasePath+"public")))
+	//app.GET(util.BasePath+"/public/*",echo.WrapHandler(publicHandler))
+	group := app.Group(util.BasePath + "/public/*")
+	group.Use(handler.ValidJWT)
+	group.GET("/*", echo.WrapHandler(publicHandler))
 	// 启动 Echo 服务器，使用TLS
 	//app.Logger.Fatal(app.StartTLS(util.BindAddress, "cert/fullchain.pem", "cert/privkey.pem"))
 	app.Logger.Fatal(app.Start(util.BindAddress))
