@@ -72,7 +72,7 @@
 			var currentIndex = 0;
 			// Fetch video list from backend using AJAX
 			var xhr = new XMLHttpRequest();
-			xhr.open('POST', '/listfile?type=video', true);
+			xhr.open('POST', '/listfile?type=0', true);
 			xhr.onreadystatechange = function() {
 				if (xhr.readyState === XMLHttpRequest.DONE) {
 					if (xhr.status === 200) {

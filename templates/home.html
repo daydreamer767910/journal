@@ -24,7 +24,7 @@
 			var container = document.querySelector('.tiles');
 			function getVideoList(callback) {
 				var xhr = new XMLHttpRequest();
-				xhr.open('POST', '/listfile?type=', true);
+				xhr.open('POST', '/listfile?type=255', true);
 				xhr.onreadystatechange = function() {
 					if (xhr.readyState === XMLHttpRequest.DONE) {
 						if (xhr.status === 200) {
@@ -71,8 +71,10 @@
 									element.type = videoItem.Type;
 									break;
 								case 'audio':
-									element = document.createElement('audio');
+									element = document.createElement('img');
 									element.src = videoItem.Thumbnail;
+									element.alt = videoItem.Name;
+									//element.setAttribute('poster', videoItem.Thumbnail);
 									//element.controls = true;
 									break;
 								default:

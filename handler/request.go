@@ -18,6 +18,11 @@ type jsonHTTPRegisterForm struct {
 	Adress   string `json:"address"`
 }
 
+type jsonHTTPCombineFiles struct {
+	OutputFile string   `json:"outputfile"`
+	Files      []string `json:"files"`
+}
+
 type jsonHTTPDeleteFiles struct {
 	Files []string `json:"files"`
 }

@@ -19,7 +19,7 @@
         }
 
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/music-metadata@7.14.0/lib/index.min.js"></script>
+    
     <script>
         function sortTable(n) {
             var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
@@ -83,6 +83,41 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ files: selectedFiles }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Handle the response from the backend
+                console.log(data);
+                location.reload();
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+        }
+        function combineSelected() {
+            var selectedFiles = [];
+            var checkboxes = document.querySelectorAll('#fileTable tbody input[type="checkbox"]:checked');
+            var outputFilename = document.getElementById('combineFilename').value;
+            checkboxes.forEach(function (checkbox) {
+                var row = checkbox.closest('tr');
+                //var name = row.cells[1].innerText; // Assuming the name is in the second column
+                var name = row.cells[1].querySelector('a').getAttribute('href');
+                //var encodedName = encodeURIComponent(name);
+                selectedFiles.push(name);
+            });
+
+            // Send the selected files to the backend using AJAX (you can use fetch or other libraries)
+            fetch('/combine', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ outputfile: outputFilename, files: selectedFiles }),
             })
             .then(response => {
                 if (!response.ok) {
@@ -213,15 +248,19 @@
                 </header>
     
                 <button onclick="deleteSelected()">Delete Selected</button>
+                <label for="combineFilename">Filename:
+                    <input id="combineFilename" type="text" placeholder="Filename" />
+                </label>
+                <button onclick="combineSelected()">Combine Selected</button>
                 <button onclick="refresh()">Refresh</button>
                 <label for="filter">select the type of files</label>
                 <select id="filter" onchange="refresh()">
-                    <option value="">all</option>
-                    <option value="video">视频</option>
-                    <option value="audio">音频</option>
-                    <option value="image">图片</option>
-                    <option value="text">文本</option>
-                    <option value="app">应用</option>
+                    <option value=255>all</option>
+                    <option value=0>video</option>
+                    <option value=1>audio</option>
+                    <option value=2>image</option>
+                    <option value=3>text</option>
+                    <option value=4>app</option>
                 </select>
                 <br>
                 <audio id="audioPlayer" controls></audio>

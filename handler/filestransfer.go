@@ -8,10 +8,38 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 )
+
+func CombineFiles(db store.IStore) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userid := c.Get("userid").(string)
+		tokentype := c.Get("jwttype").(string)
+
+		user, err := db.GetUserByID(userid)
+		if err != nil {
+			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "bad user id", ""})
+		}
+		if user.Enable2FA == true && tokentype != "2FA" {
+			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "need to pass 2FA auth first", ""})
+		}
+		var request jsonHTTPCombineFiles
+		/*struct {
+			Files []string `json:"files"`
+		}*/
+		if err := c.Bind(&request); err != nil {
+			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Bad post data", err.Error()})
+		}
+		output_path := filepath.Join("public", "works", user.Username)
+		err = util.CombineFiles(request.Files, output_path, request.OutputFile)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "CombineFiles", err.Error()})
+		}
+		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "combine ok", ""})
+	}
+}
 
 func ListFiles(db store.IStore) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -33,8 +61,8 @@ func ListFiles(db store.IStore) echo.HandlerFunc {
 		} else {
 			upload_path = filepath.Join("public", "uploads", user.Username)
 		}
-
-		files, _ := util.ListFiles(upload_path, fileType)
+		nType, _ := strconv.Atoi(fileType)
+		files, _ := util.ListFiles(upload_path, nType)
 
 		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "read dir ok", files})
 	}
@@ -92,7 +120,7 @@ func Upload(db store.IStore) echo.HandlerFunc {
 			if _, err := io.Copy(dst, src); err != nil {
 				return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "Error copying file", err.Error()})
 			}
-			if strings.Contains(util.GetMediaType(dst_file), "video") {
+			if util.GetMediaType(dst_file) == util.VideoFile {
 				var percentages []int
 				var durations []int
 				for _, cfg := range util.ThumbnailCfg {
@@ -100,7 +128,9 @@ func Upload(db store.IStore) echo.HandlerFunc {
 					durations = append(durations, cfg.Duration)
 				}
 
-				util.GenerateThumbnail(dst_file, percentages, durations)
+				util.GenerateVideoThumbnail(dst_file, percentages, durations)
+			} else if util.GetMediaType(dst_file) == util.AudioFile {
+				util.GenerateAudioThumbnail(dst_file)
 			}
 
 		}

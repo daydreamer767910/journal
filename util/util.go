@@ -79,7 +79,7 @@ func RunCommand(cmd string, arg ...string) ([]byte, error) {
 	command := exec.Command(cmd, arg...)
 	command.Stdout = logFile
 	command.Stderr = logFile
-	//fmt.Println(cmd, arg)
+	fmt.Println(cmd, arg)
 	// 执行命令
 	err = command.Run()
 	if err != nil {

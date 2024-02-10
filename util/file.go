@@ -9,7 +9,19 @@ import (
 	"strings"
 )
 
-const thumbnailExtension = ".mp4"
+const (
+	VideoFile = iota
+	AudioFile
+	ImageFile
+	TextFile
+	AppFile
+	UnknownFile
+)
+
+var thumbnailExtension = map[int]string{
+	VideoFile: ".mp4",
+	AudioFile: ".jpg",
+}
 
 var mediaType = map[string]string{
 	".mp4":  "video/mp4",
@@ -55,14 +67,27 @@ type fileInfo struct {
 	IsDir         bool
 }
 
-func GetMediaType(fileName string) string {
-
+func GetMediaType(fileName string) int {
 	extension := strings.ToLower(filepath.Ext(fileName))
-	eType, ok := mediaType[extension]
+	strType, ok := mediaType[extension]
 	if !ok {
-		eType = "unknown"
+		return UnknownFile
 	}
-	return eType
+	strType = strings.Split(strType, "/")[0]
+	switch strType {
+	case "video":
+		return VideoFile
+	case "audio":
+		return AudioFile
+	case "image":
+		return ImageFile
+	case "text":
+		return TextFile
+	case "application":
+		return AppFile
+	default:
+		return UnknownFile
+	}
 }
 
 // GetVideoDuration 获取视频的长度（持续时间）
@@ -80,7 +105,7 @@ func getVideoDuration(videoFile string) (float64, error) {
 	return duration, nil
 }
 
-func GenerateThumbnail(inputFile string, percentages []int, durations []int) error {
+func GenerateAudioThumbnail(inputFile string) error {
 	extension := strings.ToLower(filepath.Ext(inputFile))
 
 	thumbnail_path := filepath.Join(filepath.Dir(inputFile), "thumbnail")
@@ -89,7 +114,31 @@ func GenerateThumbnail(inputFile string, percentages []int, durations []int) err
 		return err
 	}
 	base := strings.TrimSuffix(filepath.Base(inputFile), extension)
-	outputFile := filepath.Join(thumbnail_path, base+thumbnailExtension)
+	outputFile := filepath.Join(thumbnail_path, base+".jpg")
+
+	// 执行 FFmpeg 命令来生成缩略图
+	cmdArgs := []string{"-i", inputFile}
+	cmdArgs = append(cmdArgs, "-an", "-vcodec", "copy", outputFile)
+	//fmt.Println("ffmpeg", cmdArgs)
+	_, err = RunCommand("ffmpeg", cmdArgs...)
+	if err != nil {
+		fmt.Printf("failed to generate thumbnail[%s]: %v", outputFile, err)
+		return err
+	}
+	//fmt.Printf("Thumbnail %s generated for %s\n", outputFile, inputFile)
+	return nil
+}
+
+func GenerateVideoThumbnail(inputFile string, percentages []int, durations []int) error {
+	extension := strings.ToLower(filepath.Ext(inputFile))
+
+	thumbnail_path := filepath.Join(filepath.Dir(inputFile), "thumbnail")
+	err := os.MkdirAll(thumbnail_path, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	base := strings.TrimSuffix(filepath.Base(inputFile), extension)
+	outputFile := filepath.Join(thumbnail_path, base+thumbnailExtension[VideoFile])
 
 	// 获取视频总时长
 	duration, err := getVideoDuration(inputFile)
@@ -123,17 +172,62 @@ func getThumbnail(directoryPath string, fileName string) (Thumbnail string, Thum
 	extension := strings.ToLower(filepath.Ext(fileName))
 	base := strings.TrimSuffix(fileName, extension)
 	mType := GetMediaType(fileName)
-	if mType == "unknown" {
+	if mType == UnknownFile {
 		Thumbnail = "/assets/ufo.png"
 		ThumbnailType = extension
-	} else if strings.Contains(mType, "video") {
-		Thumbnail = filepath.Join(directoryPath, "thumbnail", base+thumbnailExtension)
-		ThumbnailType = GetMediaType(Thumbnail)
+	} else if mType == VideoFile || mType == AudioFile {
+		Thumbnail = filepath.Join(directoryPath, "thumbnail", base+thumbnailExtension[mType])
+		ThumbnailType = mediaType[thumbnailExtension[mType]]
 	} else {
 		Thumbnail = filepath.Join(directoryPath, fileName)
-		ThumbnailType = mType
+		ThumbnailType = mediaType[extension]
 	}
 	return
+}
+
+func CombineFiles(files []string, outputDir string, outputFile string) error {
+	var imageFiles []string
+	var audioFiles []string
+	// 创建输出目录
+	err := os.MkdirAll(outputDir, 0755)
+	if err != nil {
+		fmt.Println("Failed to create output directory:", err)
+		return err
+	}
+
+	for _, file := range files {
+		file, _ = url.QueryUnescape(file)
+		filename := filepath.Base(file)
+		mType := GetMediaType(filename)
+		if mType == ImageFile {
+			imageFiles = append(imageFiles, file)
+		} else if mType == AudioFile {
+			audioFiles = append(audioFiles, file)
+		}
+	}
+
+	// 构建FFmpeg命令
+	//ffmpeg -y -framerate 0.33 -stream_loop -1 -i image%d.jpg -i audio.mp3 -c:v libx264 -c:a
+	//aac -strict experimental output.mp4
+
+	cmdArgs := []string{"-y", "-framerate", "0.33"}
+	for _, imageFile := range imageFiles {
+		cmdArgs = append(cmdArgs, "-i", imageFile)
+	}
+	for _, audioFile := range audioFiles {
+		cmdArgs = append(cmdArgs, "-i", audioFile)
+	}
+
+	cmdArgs = append(cmdArgs, "-c:v", "libx264", "-c:a", "aac", "-strict", "experimental", filepath.Join(outputDir, outputFile))
+	// 执行 ffmpeg 命令
+	//fmt.Println("ffmpeg", cmdArgs)
+	_, err = RunCommand("ffmpeg", cmdArgs...)
+	if err != nil {
+		fmt.Printf("failed to CombineFiles[%s]: %v", outputFile, err)
+		return err
+	}
+	fmt.Printf("[%s] is created!\n", outputFile)
+	return nil
 }
 
 func DeleteFiles(files []string) error {
@@ -144,11 +238,12 @@ func DeleteFiles(files []string) error {
 			fmt.Println(err.Error())
 			return err
 		}
-		if strings.Contains(GetMediaType(file), "video") {
+		mType := GetMediaType(file)
+		if mType == VideoFile || mType == AudioFile {
 			extension := strings.ToLower(filepath.Ext(file))
 			base := strings.TrimSuffix(filepath.Base(file), extension)
 			path := filepath.Dir(file)
-			Thumbnail := filepath.Join(path, "thumbnail", base+thumbnailExtension)
+			Thumbnail := filepath.Join(path, "thumbnail", base+thumbnailExtension[mType])
 			if err := os.Remove(Thumbnail); err != nil {
 				fmt.Println(err.Error())
 				return err
@@ -158,7 +253,7 @@ func DeleteFiles(files []string) error {
 	return nil
 }
 
-func ListFiles(directoryPath string, fileType string) ([]fileInfo, error) {
+func ListFiles(directoryPath string, fileType int) ([]fileInfo, error) {
 
 	var files []fileInfo
 
@@ -184,8 +279,7 @@ func ListFiles(directoryPath string, fileType string) ([]fileInfo, error) {
 			}
 			files = append(files, subFiles...)
 		} else {
-			result := strings.Split(GetMediaType(entry.Name()), "/")
-			if fileType != "" && fileType != result[0] {
+			if fileType != 255 && fileType != GetMediaType(entry.Name()) {
 				continue
 			}
 			// 如果是文件，添加到列表中
@@ -194,14 +288,14 @@ func ListFiles(directoryPath string, fileType string) ([]fileInfo, error) {
 			modTimeFormatted := fileinfo.ModTime().Format("2006-01-02 15:04:05")
 			thumbnail, thumbnailtype := getThumbnail(directoryPath, entry.Name())
 			url := filepath.Join(directoryPath, entry.Name())
-
+			extension := strings.ToLower(filepath.Ext(entry.Name()))
 			files = append(files, fileInfo{
 				Name:          entry.Name(),
 				Thumbnail:     thumbnail,
 				ThumbnailType: thumbnailtype,
 				URL:           filepath.ToSlash(url),
 				Size:          fileinfo.Size(),
-				Type:          GetMediaType(entry.Name()),
+				Type:          mediaType[extension],
 				ModTime:       modTimeFormatted,
 				IsDir:         false,
 			})
