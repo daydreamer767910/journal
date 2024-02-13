@@ -92,11 +92,13 @@ func main() {
 	app.GET(util.BasePath+"/security", handler.SecurityPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/auth2fa", handler.Auth2FAPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/filesbrowser", handler.FileBrowserPage(db), handler.ValidJWT)
+	app.GET(util.BasePath+"/workshop", handler.WorkshopPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/video", handler.VideoPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/logout", handler.LogoutPage(db), handler.ValidJWT)
 
 	app.POST(util.BasePath+"/combine", handler.CombineFiles(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/listfile", handler.ListFiles(db), handler.ValidJWT)
+	app.POST(util.BasePath+"/listworkshop", handler.ListWorkshop(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/logout", handler.Logout(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/login", handler.Login(db))
 	app.POST(util.BasePath+"/register", handler.Register(db))

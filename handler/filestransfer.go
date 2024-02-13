@@ -41,6 +41,33 @@ func CombineFiles(db store.IStore) echo.HandlerFunc {
 	}
 }
 
+func ListWorkshop(db store.IStore) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userid := c.Get("userid").(string)
+		tokentype := c.Get("jwttype").(string)
+
+		user, err := db.GetUserByID(userid)
+		if err != nil {
+			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "bad user id", ""})
+		}
+		if user.Enable2FA == true && tokentype != "2FA" {
+			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "need to pass 2FA auth first", ""})
+		}
+
+		fileType := c.QueryParam("type")
+		var upload_path string
+		if user.Admin {
+			upload_path = "public"
+		} else {
+			upload_path = filepath.Join("public", "works", user.Username)
+		}
+		nType, _ := strconv.Atoi(fileType)
+		files, _ := util.ListFiles(upload_path, nType)
+
+		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "read dir ok", files})
+	}
+}
+
 func ListFiles(db store.IStore) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		userid := c.Get("userid").(string)
@@ -83,7 +110,7 @@ func Upload(db store.IStore) echo.HandlerFunc {
 		// 解析表单
 		form, err := c.MultipartForm()
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Error parsing form", err})
+			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Error parsing form", err.Error()})
 		}
 
 		// 获取上传的文件
@@ -91,7 +118,7 @@ func Upload(db store.IStore) echo.HandlerFunc {
 		currentDir, err := os.Getwd()
 		if err != nil {
 			fmt.Println("Failed to get current directory:", err)
-			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "", err})
+			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "", err.Error()})
 
 		}
 		upload_path := filepath.Join(currentDir, "public", "uploads", user.Username)

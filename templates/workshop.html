@@ -10,7 +10,7 @@
 
         th, td {
             border: 1px solid #dddddd;
-            text-align: center;
+            text-align: left;
             margin-top: 5px; 
             vertical-align: middle;
             padding: 8px;
@@ -64,10 +64,16 @@
                 }
             }
         }
-        function deleteSelected() {
+        
+        function combineSelected() {
             var selectedFiles = [];
             var checkboxes = document.querySelectorAll('#fileTable tbody input[type="checkbox"]:checked');
-
+            var outputFilename = document.getElementById('combineFilename').value;
+			// 检查文件名是否以指定后缀结尾
+            if (!outputFilename.endsWith('.mp4')) {
+                $('#errorMessage').text('文件必须以 .mp4 结尾');
+                return;
+            }
             checkboxes.forEach(function (checkbox) {
                 var row = checkbox.closest('tr');
                 //var name = row.cells[1].innerText; // Assuming the name is in the second column
@@ -75,42 +81,40 @@
                 //var encodedName = encodeURIComponent(name);
                 selectedFiles.push(name);
             });
-
+			if(selectedFiles.length === 0) {
+                $('#errorMessage').text('请选则需要合成的文件');
+				return
+			}
+			$('#errorMessage').text("正在合成文件..."+outputFilename)
             // Send the selected files to the backend using AJAX (you can use fetch or other libraries)
-            fetch('/delete', {
+            fetch('/combine', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ files: selectedFiles }),
+                body: JSON.stringify({ outputfile: outputFilename, files: selectedFiles }),
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    $('#errorMessage').text(response.json().message + response.json().meta)
                 }
                 return response.json();
             })
             .then(data => {
                 // Handle the response from the backend
                 console.log(data);
-                location.reload();
+                $('#errorMessage').text(data.message)
             })
             .catch(error => {
                 console.error('There was a problem with the fetch operation:', error);
             });
         }
-        
         document.addEventListener('DOMContentLoaded', function() {
             refresh();
         });
         
-        function refresh() {
-            // 获取下拉菜单元素
-            const filterSelect = document.getElementById('filter');
-            
-            const selectedValue = filterSelect.value;
-            
-            fetch(`/listfile?type=${selectedValue}` , {
+        function refresh() {     
+            fetch(`/listfile?type=255` , {
                 method: 'POST',
             })
             .then(response => {
@@ -173,35 +177,6 @@
             console.log('Meta:', meta);
         }
         
-        // 播放所选歌曲
-        function playSelectedSongs() {
-            var selectedFiles = [];
-            var checkboxes = document.querySelectorAll('#fileTable tbody input[type="checkbox"]:checked');
-
-            checkboxes.forEach(function (checkbox) {
-                var row = checkbox.closest('tr');
-                var name = row.cells[1].querySelector('a').getAttribute('href');
-                selectedFiles.push(name);
-            });
-
-            if (selectedFiles.length === 0) {
-                alert('请先选择歌曲');
-                return;
-            }
-
-            let currentIndex = 0;
-            const audioPlayer = document.getElementById('audioPlayer'); // 获取音频播放器元素
-            audioPlayer.src = selectedFiles[currentIndex]; // 设置音频源
-
-            audioPlayer.addEventListener('ended', function() {
-                currentIndex = (currentIndex + 1) % selectedFiles.length;
-                audioPlayer.src = selectedFiles[currentIndex]; // 切换到下一首歌曲
-                audioPlayer.play(); // 播放下一首歌曲
-            });
-
-            audioPlayer.play(); // 播放第一首歌曲
-        }
-
     </script>
 
 </head>
@@ -210,26 +185,13 @@
         <div id="main">
             <div class="inner">
                 <header>
-                    <h1>File Browser</h1>
+                    <h1>Work Shop</h1>
                 </header>
-    
-                <button onclick="deleteSelected()">Delete Selected</button>
-                
-                <button onclick="refresh()">Refresh</button>
-                <label for="filter">select the type of files</label>
-                <select id="filter" onchange="refresh()">
-                    <option value=255>all</option>
-                    <option value=0>video</option>
-                    <option value=1>audio</option>
-                    <option value=2>image</option>
-                    <option value=3>text</option>
-                    <option value=4>app</option>
-                </select>
-                <br>
-                <audio id="audioPlayer" controls></audio>
-                
-                <button onclick="playSelectedSongs()">play seleted medias</button>
-                <br>
+                <label for="combineFilename">Filename:
+                    <input id="combineFilename" type="text" placeholder="Filename" />
+                </label>
+                <button onclick="combineSelected()">Combine Selected Items</button>
+                <div class="error-message" id="errorMessage"></div>
                 <table id="fileTable">
                     <thead>
                         <tr>
