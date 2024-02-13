@@ -115,11 +115,9 @@ func main() {
 	app.GET(util.BasePath+"/*", echo.WrapHandler(http.StripPrefix(util.BasePath, webHandler)))
 
 	publicHandler := http.StripPrefix(util.BasePath+"/public/", http.FileServer(http.Dir(util.BasePath+"public")))
-	//app.GET(util.BasePath+"/public/*",echo.WrapHandler(publicHandler))
 	group := app.Group(util.BasePath + "/public/*")
 	group.Use(handler.ValidJWT)
 	group.GET("/*", echo.WrapHandler(publicHandler))
-	// 启动 Echo 服务器，使用TLS
-	//app.Logger.Fatal(app.StartTLS(util.BindAddress, "cert/fullchain.pem", "cert/privkey.pem"))
+
 	app.Logger.Fatal(app.Start(util.BindAddress))
 }
