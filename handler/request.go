@@ -21,6 +21,7 @@ type jsonHTTPRegisterForm struct {
 type jsonHTTPCombineFiles struct {
 	OutputFile string   `json:"outputfile"`
 	Files      []string `json:"files"`
+	Opts       Meta     `json:"meta"`
 }
 
 type jsonHTTPDeleteFiles struct {

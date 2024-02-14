@@ -26,14 +26,14 @@ func CombineFiles(db store.IStore) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "need to pass 2FA auth first", ""})
 		}
 		var request jsonHTTPCombineFiles
-		/*struct {
-			Files []string `json:"files"`
+		/*request := jsonHTTPCombineFiles{
+			Opts:       map[string]interface{}{"scale": "1280:720", "duration": "1.5"},
 		}*/
 		if err := c.Bind(&request); err != nil {
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Bad post data", err.Error()})
 		}
 		output_path := filepath.Join("public", "works", user.Username)
-		err = util.CombineFiles(request.Files, output_path, request.OutputFile)
+		err = util.CombineFiles(request.Files, output_path, request.OutputFile, request.Opts.(map[string]interface{}))
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "CombineFiles", err.Error()})
 		}
