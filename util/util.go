@@ -56,6 +56,20 @@ func LookupEnvOrString(key string, defaultVal string) string {
 	return defaultVal
 }
 
+/*
+func RunCommand(cmd string, arg ...string) ([]byte, error) {
+	// 执行命令
+	command := exec.Command(cmd, arg...)
+
+	// 执行命令并捕获输出
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run command: %v", err)
+	}
+
+	return output, nil
+}*/
+
 func RunCommand(cmd string, arg ...string) ([]byte, error) {
 	// 创建日志目录
 	logsDir := "logs"

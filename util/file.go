@@ -14,6 +14,7 @@ const (
 	VideoFile = iota
 	AudioFile
 	ImageFile
+	SubTitleFile
 	TextFile
 	AppFile
 	UnknownFile
@@ -55,6 +56,9 @@ var mediaType = map[string]string{
 
 	".txt": "text/plain",
 	".csv": "text/csv",
+
+	".srt": "subtitle/srt",
+	".ass": "subtitle/ass",
 }
 
 type fileInfo struct {
@@ -86,6 +90,8 @@ func GetMediaType(fileName string) int {
 		return TextFile
 	case "application":
 		return AppFile
+	case "subtitle":
+		return SubTitleFile
 	default:
 		return UnknownFile
 	}
@@ -204,22 +210,38 @@ func mergeAudioFiles(audioFiles []string, outputFile string, opts ...map[string]
 	return nil
 }
 
-func buildFilterComplex(n int, resolution string) string {
-	//-filter_complex "
-	//[0:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2[v0];
-	//[1:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2[v1];
-	//[v0][v1]concat=n=2:v=1:a=0[outv]"
-	var filter strings.Builder
+func buildFilterComplex(n int, filter *strings.Builder, opts ...map[string]interface{}) string {
+	filter_complex := ""
+	for _, opt := range opts {
+		value, ok := opt["scale"]
+		if ok {
+			resolution := value.(string)
+			filter_complex = fmt.Sprintf("scale=%s:force_original_aspect_ratio=decrease,pad=%s:(ow-iw)/2:(oh-ih)/2,", resolution, resolution)
+		}
+		if value, ok := opt["drawtext"]; ok {
+			if drawtextOptions, ok := value.(map[string]interface{}); ok {
+				text := drawtextOptions["text"].(string)
+				size := drawtextOptions["fontsize"].(string)
+				color := drawtextOptions["fontcolor"].(string)
+				if text != "" && size != "" && color != "" {
+					filter_complex = fmt.Sprintf("drawtext=text='%s':x=(w-text_w)/2:y=h-th-40:fontsize=%s:fontcolor=%s", text, size, color)
+				}
+			}
+		}
+	}
+	// 去除最后一个逗号
+	filter_complex = strings.TrimSuffix(filter_complex, ",")
+
 	for i := 0; i < n; i++ {
-		filter.WriteString(fmt.Sprintf("[%d:v]scale=%s:force_original_aspect_ratio=decrease,pad=%s:(ow-iw)/2:(oh-ih)/2[v%d];", i, resolution, resolution, i))
+		filter.WriteString(fmt.Sprintf("[%d:v]%s[v%d];", i, filter_complex, i))
 	}
 	for i := 0; i < n; i++ {
 		filter.WriteString(fmt.Sprintf("[v%d]", i))
 	}
-	filter.WriteString("concat=n=")
-	filter.WriteString(fmt.Sprintf("%d", n))
-	filter.WriteString(":v=1:a=0[outv]")
-	return filter.String()
+
+	filter.WriteString(fmt.Sprintf("concat=n=%d:v=1:a=0[outv]", n))
+
+	return "[outv]"
 }
 
 func scaleImgFiles(imageFiles []string, outputDir string, opts ...map[string]interface{}) ([]string, error) {
@@ -231,7 +253,7 @@ func scaleImgFiles(imageFiles []string, outputDir string, opts ...map[string]int
 			resolution = value.(string)
 		}
 	}
-	fmt.Printf("scale imgs  with [%s]...", resolution)
+	fmt.Printf("scale imgs [%s]...", resolution)
 	//ffmpeg -i 10.jpg -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2" -q:v 1 out_10.jpg
 	for i, imageFile := range imageFiles {
 		cmdArgs := []string{"-y", "-i", imageFile, "-vf"}
@@ -258,7 +280,7 @@ func mergeImgFiles(outputDir string, outputFile string, opts ...map[string]inter
 		}
 	}
 	frameRate := 1 / durationPerPic
-	fmt.Printf("merge imgs frameRate[%v] duration[%v]...", frameRate, durationPerPic)
+	fmt.Printf("merge imgs frameRate[%v] duration[%v]", frameRate, durationPerPic)
 	cmdArgs := []string{"-y", "-framerate", fmt.Sprintf("%.04f", frameRate)}
 	inputImgs := filepath.Join(outputDir, "%d.jpg")
 	cmdArgs = append(cmdArgs, "-i", inputImgs, "-c:v", "libx264", "-r", "30", "-pix_fmt", "yuv420p")
@@ -272,24 +294,17 @@ func mergeImgFiles(outputDir string, outputFile string, opts ...map[string]inter
 }
 
 func mergeVideoFiles(videoFiles []string, outputFile string, opts ...map[string]interface{}) error {
-	resolution := "1280:720" // 默认分辨率
-	for _, opt := range opts {
-		value, ok := opt["scale"]
-		if ok {
-			resolution = value.(string)
-		}
-	}
-	fmt.Printf("merge video  with [%s]...", resolution)
+	var filter strings.Builder
 	cmdArgs := []string{"-y"} // 覆盖输出文件
 	for _, videoFile := range videoFiles {
 		cmdArgs = append(cmdArgs, "-i", videoFile)
 	}
-	cmdArgs = append(cmdArgs,
-		"-filter_complex",
-		buildFilterComplex(len(videoFiles), resolution),
-		"-map", "[outv]",
-		outputFile,
-	)
+	complexFilterName := buildFilterComplex(len(videoFiles), &filter, opts...)
+
+	cmdArgs = append(cmdArgs, "-filter_complex", filter.String(), "-map", complexFilterName)
+
+	cmdArgs = append(cmdArgs, outputFile)
+	//fmt.Printf("ffmpeg %s\n", strings.Join(cmdArgs, " "))
 	_, err := RunCommand("ffmpeg", cmdArgs...)
 	if err != nil {
 		fmt.Printf("failed to Combine video Files[%s]: %v", strings.Join(videoFiles, ","), err)
@@ -299,6 +314,7 @@ func mergeVideoFiles(videoFiles []string, outputFile string, opts ...map[string]
 }
 
 func mergeVideoAudioFile(file1 string, file2 string, outputFile string) error {
+
 	//(时长短的循环播放)
 	duration1, err := getVideoDuration(file1)
 	if err != nil {
@@ -328,6 +344,7 @@ func mergeVideoAudioFile(file1 string, file2 string, outputFile string) error {
 		cmdArgs = append(cmdArgs, "-i", file2)
 		cmdArgs = append(cmdArgs, "-c:v", "copy", "-c:a", "aac", "-strict", "experimental")
 	}
+
 	cmdArgs = append(cmdArgs, outputFile)
 	// 执行 ffmpeg 命令
 	//fmt.Println("ffmpeg", cmdArgs)
@@ -336,7 +353,36 @@ func mergeVideoAudioFile(file1 string, file2 string, outputFile string) error {
 		fmt.Printf("failed to CombineFiles[%s]: %v", outputFile, err)
 		return err
 	}
-	fmt.Printf("[%s]created", outputFile)
+	//fmt.Printf("[%s]created", outputFile)
+	return nil
+}
+
+func mergeSubTitles(videoFile string, subTitleFiles []string, outputFile string) error {
+	//ffmpeg -i 22.mp4 -i subtitle1.srt -i subtitle2.srt
+	//-c copy -c:s srt
+	//-metadata:s:s:0 language=eng -metadata:s:s:0 title="a"
+	//-metadata:s:s:1 language=eng -metadata:s:s:1 title="b"
+	//-map 0:v -map 0:a
+	//-map 1:s -map 2:s
+	//output.mkv
+	cmdArgs := []string{"-y", "-i", videoFile}
+	for _, subtitleFile := range subTitleFiles {
+		cmdArgs = append(cmdArgs, "-i", subtitleFile)
+	}
+	cmdArgs = append(cmdArgs, "-c", "copy")
+	//cmdArgs = append(cmdArgs, "-map 0 -dn -map \"-0:s\" -map \"-0:d\"")
+	/*for i := range subTitleFiles {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("-map %d:0 -metadata:s:s:%d title=t-%d", i+1, i, i))
+	}*/
+
+	cmdArgs = append(cmdArgs, outputFile)
+	//fmt.Printf("ffmpeg %v\n", cmdArgs)
+	//time.Sleep(2 * time.Second)
+	_, err := RunCommand("ffmpeg", cmdArgs...)
+	if err != nil {
+		fmt.Printf("\nfailed to CombineFiles[%s]: %v\n", outputFile, err)
+		return err
+	}
 	return nil
 }
 
@@ -344,6 +390,7 @@ func CombineFiles(files []string, outputDir string, outputFile string, opts ...m
 	var imageFiles []string
 	var audioFiles []string
 	var videoFiles []string
+	var subTitleFiles []string
 	var tempFiles []string
 
 	combinedAudioFile := ""
@@ -365,9 +412,22 @@ func CombineFiles(files []string, outputDir string, outputFile string, opts ...m
 			audioFiles = append(audioFiles, filepath.Join(file))
 		} else if mType == VideoFile {
 			videoFiles = append(videoFiles, filepath.Join(file))
+		} else if mType == SubTitleFile {
+			subTitleFiles = append(subTitleFiles, filepath.Join(file))
 		}
 	}
-	//1.先合成音频文件并且读取合成音频时长
+	defer func() {
+		//clear the temporary img files
+		for _, file := range tempFiles {
+			err := os.Remove(file)
+			if err != nil {
+				fmt.Printf("delete temporary file fail %s: %s\n", file, err)
+				continue
+			}
+			//fmt.Printf("remove %s ok\n", file)
+		}
+	}()
+	//1.根据参数合成新音频文件
 	if len(audioFiles) > 0 {
 		combinedAudioFile = filepath.Join(outputDir, "step1.mp3")
 		err = mergeAudioFiles(audioFiles, combinedAudioFile, opts...)
@@ -376,18 +436,8 @@ func CombineFiles(files []string, outputDir string, outputFile string, opts ...m
 			return err
 		}
 		tempFiles = append(tempFiles, combinedAudioFile)
-		defer func() {
-			//clear the temporary img files
-			for _, file := range tempFiles {
-				err := os.Remove(file)
-				if err != nil {
-					fmt.Printf("delete temporary file fail %s: %s\n", file, err)
-					continue
-				}
-				//fmt.Printf("remove %s ok\n", file)
-			}
-		}()
-		fmt.Println("audio merged ok")
+
+		fmt.Println("audios merged ok")
 	}
 	//2.把图片处理成相同分辨率和sar并合成视频
 	if len(imageFiles) > 0 {
@@ -404,11 +454,12 @@ func CombineFiles(files []string, outputDir string, outputFile string, opts ...m
 			return err
 		}
 		tempFiles = append(tempFiles, combinedVideoFile)
+		//add the merged video file to the list
 		videoFiles = append(videoFiles, combinedVideoFile)
-		fmt.Println("image merged ok")
+		fmt.Println("images merged ok")
 	}
-	//3.把多个视频合成一个
-	if len(videoFiles) > 1 {
+	//3.把视频根据分辨率等参数合成一个新视频
+	if len(videoFiles) > 0 {
 		combinedVideoFile = filepath.Join(outputDir, "step3.mp4")
 		err = mergeVideoFiles(videoFiles, combinedVideoFile, opts...)
 		if err != nil {
@@ -416,15 +467,42 @@ func CombineFiles(files []string, outputDir string, outputFile string, opts ...m
 			return err
 		}
 		tempFiles = append(tempFiles, combinedVideoFile)
-		fmt.Println("video merged ok")
+		fmt.Println("videos merged ok")
 	}
+
 	//4.把已生成音频和视频进一步合成最终视频
 	if combinedVideoFile == "" {
 		return errors.New("no img or video input")
 	} else if combinedAudioFile == "" {
-		return os.Rename(combinedVideoFile, filepath.Join(outputDir, outputFile))
+		//return os.Rename(combinedVideoFile, filepath.Join(outputDir, outputFile))
+	} else {
+		vaFile := filepath.Join(outputDir, "step4.mp4")
+		err = mergeVideoAudioFile(combinedVideoFile, combinedAudioFile, vaFile)
+		if err != nil {
+			fmt.Println("mergeVideoAudioFile:", err)
+			return err
+		}
+		combinedVideoFile = vaFile
+		tempFiles = append(tempFiles, combinedVideoFile)
+		fmt.Println("video and autio merged ok")
 	}
-	return mergeVideoAudioFile(combinedVideoFile, combinedAudioFile, filepath.Join(outputDir, outputFile))
+
+	//5.给视频添加字幕
+	if len(subTitleFiles) > 0 {
+		subtitledVideoFile := filepath.Join(outputDir, "step5.mkv")
+		err = mergeSubTitles(combinedVideoFile, subTitleFiles, subtitledVideoFile)
+		if err != nil {
+			fmt.Println("mergeSubTitles:", err)
+			return err
+		}
+		combinedVideoFile = subtitledVideoFile
+		//tempFiles = append(tempFiles, combinedVideoFile)
+		fmt.Println("subtitles merged ok")
+	}
+
+	//6.返回指定文件
+	return os.Rename(combinedVideoFile, filepath.Join(outputDir, outputFile))
+
 }
 
 func DeleteFiles(files []string) error {

@@ -32,6 +32,7 @@ func CombineFiles(db store.IStore) echo.HandlerFunc {
 		if err := c.Bind(&request); err != nil {
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Bad post data", err.Error()})
 		}
+		//fmt.Println(request)
 		output_path := filepath.Join("public", "works", user.Username)
 		err = util.CombineFiles(request.Files, output_path, request.OutputFile, request.Opts.(map[string]interface{}))
 		if err != nil {

@@ -71,11 +71,10 @@
             var outputFilename = document.getElementById('combineFilename').value;
             var resolution = document.getElementById('resolutionSelect').value;
             var durationPerPic = document.getElementById('durationPerPic').value;
-			// 检查文件名是否以指定后缀结尾
-            if (!outputFilename.endsWith('.mp4')) {
-                $('#errorMessage').text('文件必须以 .mp4 结尾');
-                return;
-            }
+            var drawText = document.getElementById('drawText').value;
+            var drawTextSize = document.getElementById('drawTextSize').value;
+            var drawTextColor = document.getElementById('drawTextColor').value;
+			
             checkboxes.forEach(function (checkbox) {
                 var row = checkbox.closest('tr');
                 //var name = row.cells[1].innerText; // Assuming the name is in the second column
@@ -98,7 +97,12 @@
                     files: selectedFiles , 
                     meta: {
                             scale: resolution,
-                            duration: durationPerPic
+                            duration: durationPerPic,
+                            drawtext :{
+                                text: drawText,
+                                fontsize: drawTextSize,
+                                fontcolor: drawTextColor,
+                            }
                         }}),
             })
             .then(response => {
@@ -205,7 +209,7 @@
                             <div class="col-6 col-12-xsmall">
                                 <input type="text" id="filterComplex" value="" placeholder="[0:v][1:v]blend=all_expr='A*B'" />
                             </div>
-                            <div class="col-12">
+                            <div class="col-6 col-12-xsmall">
                                 <select name="demo-category" id="resolutionSelect">
                                     <option value="1280:720">1280x720</option>
                                     <option value="1920:1080">1920x1080</option>
@@ -213,11 +217,13 @@
                                     <option value="3840:2160">3840x2160</option>
                                     <option value="4096:2160">4096x2160</option>
                                 </select>
-                            </div>
-                            <div class="col-6 col-12-xsmall">
                                 <input type="text" id="durationPerPic" value="" placeholder="2.5(duraiont for each pic(second))" />
                             </div>
-                            
+                            <div class="col-6 col-12-xsmall">
+                                <input type="text" id="drawText" value="" placeholder="" />
+                                <input type="text" id="drawTextSize" value="" placeholder="25" />
+                                <input type="text" id="drawTextColor" value="" placeholder="white" />
+                            </div>
                             <div class="col-4 col-12-small">
                                 <input type="radio" id="demo-priority-low" name="demo-priority" checked>
                                 <label for="demo-priority-low">Low</label>
