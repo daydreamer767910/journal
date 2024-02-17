@@ -1,0 +1,70 @@
+# syntax=docker/dockerfile:1
+
+FROM golang:1.21 as builder
+
+ARG APP_VERSION=dev
+ARG BUILD_TIME
+ARG GIT_COMMIT
+
+# 更新包列表并安装 FFmpeg 开发库
+RUN apt-get update && \
+    apt-get install -y \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libavdevice-dev \
+    libavfilter-dev \
+    libswscale-dev \
+    libswresample-dev \
+    build-essential \
+    pkg-config
+
+# 设置工作目录
+#WORKDIR /usr/src
+# 下载 ffmpeg 源代码并解压
+#ADD https://ffmpeg.org/releases/ffmpeg-6.1.1.tar.xz /usr/src
+#RUN tar -xvf ffmpeg-6.1.1.tar.xz
+# 进入 ffmpeg 源代码目录
+#WORKDIR /usr/src/ffmpeg-6.1.1
+# 编译和安装 ffmpeg
+#RUN ./configure --disable-x86asm && make && make install
+
+
+WORKDIR /build
+COPY go.* ./
+
+RUN go mod download
+
+COPY *.go ./
+COPY Makefile ./
+COPY router /build/router
+COPY handler /build/handler
+COPY model /build/model
+COPY store /build/store
+COPY util /build/util
+COPY web /build/web
+COPY templates /build/templates
+
+RUN CGO_ENABLED=1 GOOS=linux make
+
+# 第二个阶段 - 生产阶段
+FROM debian:latest
+
+# 更新包列表并安装 FFmpeg
+RUN apt-get update && \
+    apt-get install -y ffmpeg
+
+# 复制构建阶段生成的文件到生产镜像中
+WORKDIR /app
+
+COPY --from=builder /build/journal .
+
+# Optional:
+# To bind to a TCP port, runtime parameters must be supplied to the docker command.
+# But we can document in the Dockerfile what ports
+# the application is going to listen on by default.
+# https://docs.docker.com/engine/reference/builder/#expose
+EXPOSE 5000/tcp
+
+# Run
+CMD ["./journal"]

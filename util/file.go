@@ -356,8 +356,7 @@ func mergeVideoAudioFile(file1 string, file2 string, outputFile string) error {
 	//fmt.Printf("[%s]created", outputFile)
 	return nil
 }
-
-func mergeSubTitles(videoFile string, subTitleFiles []string, outputFile string) error {
+func mergeSubTitles_cmd(videoFile string, subTitleFiles []string, outputFile string) error {
 	//ffmpeg -i 22.mp4 -i subtitle1.srt -i subtitle2.srt
 	//-c copy -c:s srt
 	//-metadata:s:s:0 language=eng -metadata:s:s:0 title="a"
@@ -370,18 +369,27 @@ func mergeSubTitles(videoFile string, subTitleFiles []string, outputFile string)
 		cmdArgs = append(cmdArgs, "-i", subtitleFile)
 	}
 	cmdArgs = append(cmdArgs, "-c", "copy")
-	//cmdArgs = append(cmdArgs, "-map 0 -dn -map \"-0:s\" -map \"-0:d\"")
-	/*for i := range subTitleFiles {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("-map %d:0 -metadata:s:s:%d title=t-%d", i+1, i, i))
+	/*cmdArgs = append(cmdArgs, "-map 0")
+	for i := range subTitleFiles {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("-map %d", i+1))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("-metadata:s:s:%d title=ttl%d", i, i))
 	}*/
 
 	cmdArgs = append(cmdArgs, outputFile)
 	//fmt.Printf("ffmpeg %v\n", cmdArgs)
-	//time.Sleep(2 * time.Second)
 	_, err := RunCommand("ffmpeg", cmdArgs...)
 	if err != nil {
 		fmt.Printf("\nfailed to CombineFiles[%s]: %v\n", outputFile, err)
 		return err
+	}
+	return nil
+}
+
+func mergeSubTitles(videoFile string, subTitleFiles []string, outputFile string) error {
+
+	err := AddSubtitlesToVideo(videoFile, subTitleFiles, outputFile)
+	if err != nil {
+		fmt.Println("Error:", err)
 	}
 	return nil
 }
@@ -459,7 +467,7 @@ func CombineFiles(files []string, outputDir string, outputFile string, opts ...m
 		fmt.Println("images merged ok")
 	}
 	//3.把视频根据分辨率等参数合成一个新视频
-	if len(videoFiles) > 0 {
+	if len(videoFiles) > 1 {
 		combinedVideoFile = filepath.Join(outputDir, "step3.mp4")
 		err = mergeVideoFiles(videoFiles, combinedVideoFile, opts...)
 		if err != nil {
@@ -468,6 +476,8 @@ func CombineFiles(files []string, outputDir string, outputFile string, opts ...m
 		}
 		tempFiles = append(tempFiles, combinedVideoFile)
 		fmt.Println("videos merged ok")
+	} else if len(videoFiles) == 1 {
+		combinedVideoFile = videoFiles[0]
 	}
 
 	//4.把已生成音频和视频进一步合成最终视频
@@ -490,7 +500,7 @@ func CombineFiles(files []string, outputDir string, outputFile string, opts ...m
 	//5.给视频添加字幕
 	if len(subTitleFiles) > 0 {
 		subtitledVideoFile := filepath.Join(outputDir, "step5.mkv")
-		err = mergeSubTitles(combinedVideoFile, subTitleFiles, subtitledVideoFile)
+		err = mergeSubTitles_cmd(combinedVideoFile, subTitleFiles, subtitledVideoFile)
 		if err != nil {
 			fmt.Println("mergeSubTitles:", err)
 			return err

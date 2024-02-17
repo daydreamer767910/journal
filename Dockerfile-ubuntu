@@ -1,0 +1,73 @@
+# syntax=docker/dockerfile:1
+
+FROM ubuntu:latest as builder
+
+ARG APP_VERSION=dev
+ARG BUILD_TIME
+ARG GIT_COMMIT
+
+# 安装必要的依赖和软件包
+RUN apt-get update && apt-get install -y \
+    wget \
+    git \
+    build-essential \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libavdevice-dev \
+    libavfilter-dev \
+    libswscale-dev \
+    libswresample-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# 下载并安装 Golang
+ENV GOLANG_VERSION 1.22.0
+RUN wget -q https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz && \
+    tar -xvf go${GOLANG_VERSION}.linux-amd64.tar.gz -C /usr/local && \
+    rm -rf go${GOLANG_VERSION}.linux-amd64.tar.gz
+
+# 添加 Golang 的 bin 目录到系统 PATH
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+
+WORKDIR /build
+COPY go.* ./
+
+RUN go mod download
+
+COPY *.go ./
+COPY Makefile ./
+COPY router /build/router
+COPY handler /build/handler
+COPY model /build/model
+COPY store /build/store
+COPY util /build/util
+COPY web /build/web
+COPY templates /build/templates
+
+RUN CGO_ENABLED=1 GOOS=linux make
+
+# 第二个阶段 - 生产阶段
+#FROM alpine:3.16
+FROM ubuntu:latest
+
+# 更新包列表并安装 FFmpeg
+RUN apt-get update && \
+    apt-get install -y ffmpeg
+
+
+# 复制构建阶段生成的文件到生产镜像中
+WORKDIR /app
+
+COPY --from=builder /build/journal .
+
+# Optional:
+# To bind to a TCP port, runtime parameters must be supplied to the docker command.
+# But we can document in the Dockerfile what ports
+# the application is going to listen on by default.
+# https://docs.docker.com/engine/reference/builder/#expose
+EXPOSE 5000/tcp
+
+# Run
+CMD ["./journal"]
