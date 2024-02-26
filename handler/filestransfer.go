@@ -27,7 +27,7 @@ func CombineFiles(db store.IStore) echo.HandlerFunc {
 		}
 		var request jsonHTTPCombineFiles
 		/*request := jsonHTTPCombineFiles{
-			Opts:       map[string]interface{}{"scale": "1280:720", "duration": "1.5"},
+			Opts:       map[string]interface{}{"scale": "w=1280:h=720", "duration": "1.5"},
 		}*/
 		if err := c.Bind(&request); err != nil {
 			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Bad post data", err.Error()})

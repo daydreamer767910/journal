@@ -1,127 +1,684 @@
-
+#include <unistd.h>
 #include "avtransformer.h"
 
-int addSubtitlesToVideo(const char *input_video, const char **input_subtitles, int num_subtitles, const char *output_video) {
-    AVFormatContext *input_format_ctx = NULL, *output_format_ctx = NULL;
-    AVPacket packet;
-    int ret, stream_index;
+static void display_frame(const AVFrame *frame, AVRational time_base)
+{
+    int x, y;
+    uint8_t *p0, *p;
+    int64_t delay;
+    static int64_t last_pts = AV_NOPTS_VALUE;
 
-    // 打开输入视频文件
-    ret = avformat_open_input(&input_format_ctx, input_video, NULL, NULL);
-    if (ret < 0) {
-        fprintf(stderr, "Error opening input video file: %s\n", av_err2str(ret));
-        return ret;
+    if (frame->pts != AV_NOPTS_VALUE) {
+        if (last_pts != AV_NOPTS_VALUE) {
+            /* sleep roughly the right amount of time;
+             * usleep is in microseconds, just like AV_TIME_BASE. */
+            delay = av_rescale_q(frame->pts - last_pts,
+                                 time_base, AV_TIME_BASE_Q);
+            if (delay > 0 && delay < 1000000)
+                usleep(delay);
+        }
+        last_pts = frame->pts;
     }
-printf("1111111111111111111111111111111\n");
-    // 获取视频流信息
-    ret = avformat_find_stream_info(input_format_ctx, NULL);
-    if (ret < 0) {
-        fprintf(stderr, "Error finding stream information: %s\n", av_err2str(ret));
-        avformat_close_input(&input_format_ctx);
-        return ret;
+
+    /* Trivial ASCII grayscale display. */
+    p0 = frame->data[0];
+    puts("\033c");
+    for (y = 0; y < frame->height; y++) {
+        p = p0;
+        for (x = 0; x < frame->width; x++)
+            putchar(" .-+#"[*(p++) / 52]);
+        putchar('\n');
+        p0 += frame->linesize[0];
     }
-printf("22222222222222222222222222222222\n");
-    // 打开输出视频文件
-    ret = avformat_alloc_output_context2(&output_format_ctx, NULL, NULL, output_video);
-    if (ret < 0) {
-        fprintf(stderr, "Error allocating output context: %s\n", av_err2str(ret));
-        avformat_close_input(&input_format_ctx);
-        return ret;
+    fflush(stdout);
+}
+
+void print_stream_info(AVFormatContext *fmt_ctx,int out) {
+    /*printf("File Information:\n");
+    printf("  Duration: %lld milliseconds\n", fmt_ctx->duration / 1000);
+
+    printf("Streams:\n");
+    for (int i = 0; i < fmt_ctx->nb_streams; i++) {
+        AVStream *stream = fmt_ctx->streams[i];
+        const char *type_str = av_get_media_type_string(stream->codecpar->codec_type);
+        printf("  Stream #%d: %s\n", i, type_str);
+
+        printf("    Codec: %s\n", avcodec_get_name(stream->codecpar->codec_id));
+
+        printf("    Duration: %lld milliseconds\n", stream->duration / AV_TIME_BASE * 1000);
+        printf("    Time Base: %d/%d\n", stream->time_base.num, stream->time_base.den);
+
+        if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            printf("    Frame Rate: %d/%d\n", stream->avg_frame_rate.num, stream->avg_frame_rate.den);
+            printf("    Resolution: %dx%d\n", stream->codecpar->width, stream->codecpar->height);
+        }
+    }*/
+    av_dump_format(fmt_ctx, 0, fmt_ctx->url, out);
+
+}
+
+static int select_channel_layout(const AVCodec *codec, AVChannelLayout *dst)
+{
+    const AVChannelLayout *p, *best_ch_layout;
+    int best_nb_channels   = 0;
+
+    if (!codec->ch_layouts)
+        return av_channel_layout_copy(dst, &(AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO);
+
+    p = codec->ch_layouts;
+    while (p->nb_channels) {
+        int nb_channels = p->nb_channels;
+
+        if (nb_channels > best_nb_channels) {
+            best_ch_layout   = p;
+            best_nb_channels = nb_channels;
+        }
+        p++;
     }
-printf("333333333333333333333333333333333\n");
-    // 遍历输入视频文件的流并复制到输出文件中
-    for (stream_index = 0; stream_index < input_format_ctx->nb_streams; stream_index++) {
-        AVStream *in_stream = input_format_ctx->streams[stream_index];
-        AVStream *out_stream = avformat_new_stream(output_format_ctx, NULL);
-        if (!out_stream) {
-            fprintf(stderr, "Failed allocating output stream\n");
-            ret = AVERROR_UNKNOWN;
+    return av_channel_layout_copy(dst, best_ch_layout);
+}
+
+int get_stream_index(AVFormatContext *format_ctx, enum AVMediaType etype) {
+    for (int i = 0; i < format_ctx->nb_streams; i++) {
+        if(format_ctx->streams[i]->codecpar->codec_type == etype)
+            return i;
+    }
+    return -1;
+}
+
+AVFilterContext * createFilter(AVFilterGraph *filter_graph,char *name,char *instance_name, char *args) {
+    AVFilterContext *filter_ctx = NULL;
+    const AVFilter *filter = avfilter_get_by_name(name);
+    if (!filter) {
+        fprintf(stderr, "filtering %s element not found\n",name);
+        return NULL;
+    }
+    if (avfilter_graph_create_filter(&filter_ctx, filter, instance_name, args, NULL, filter_graph) < 0) {
+        fprintf(stderr, "Cannot create filter[%s] with args[%s]\n",instance_name,args);
+        return NULL;
+    }
+    //printf("filter[%s][%s][%s]created\n",name,instance_name,args);
+    return filter_ctx;
+}
+
+int create_vfilters_map(AVFilterGraph *graph,int num_ic ,AVCodecContext **dec_vctx_array,AVCodecContext *en_vctx,const char *filter_desc_str) {
+    AVFilterContext *buffersrc_ctx_array[num_ic];
+    AVFilterContext *buffersink_ctx = NULL;
+    
+    AVFilterInOut *inputs = NULL;
+    AVFilterInOut *outputs[num_ic];
+    char args[512];
+    char name[64];
+    int ret = -1;
+    memset(buffersrc_ctx_array,0,num_ic*sizeof(AVFilterContext*));
+    memset(outputs,0,num_ic*sizeof(AVFilterInOut*));
+    for(int i=0; i<num_ic ;i++) {
+        snprintf(args, sizeof(args), "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+            dec_vctx_array[i]->width, 
+            dec_vctx_array[i]->height, 
+            dec_vctx_array[i]->pix_fmt,
+            dec_vctx_array[i]->time_base.num, 
+            dec_vctx_array[i]->time_base.den,
+            dec_vctx_array[i]->sample_aspect_ratio.num, 
+            dec_vctx_array[i]->sample_aspect_ratio.den);
+
+        printf("buffer_%d[%s]\n",i,args);
+        snprintf(name,sizeof(name),"buffer_%d",i);
+        buffersrc_ctx_array[i] = createFilter(graph, "buffer",name, args);
+        if (!buffersrc_ctx_array[i]) {
+            fprintf(stderr, "Cannot create buffer source\n");
             goto end;
         }
-        ret = avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
-        if (ret < 0) {
-            fprintf(stderr, "Failed to copy codec parameters: %s\n", av_err2str(ret));
+        outputs[i] = avfilter_inout_alloc();
+        if(!outputs[i]){
+            fprintf(stderr, "Cannot create outputs\n");
             goto end;
         }
-        out_stream->codecpar->codec_tag = 0;
+        snprintf(name,sizeof(name),"%d",i);
+        outputs[i]->name = av_strdup(name);
+        outputs[i]->filter_ctx = buffersrc_ctx_array[i];
+        outputs[i]->pad_idx = 0;
+        outputs[i]->next = NULL;
+        if(i>0) {
+            outputs[i-1]->next = outputs[i];
+        }
     }
-printf("4444444444444444444444444444444444\n");
-// 写入输出文件的文件头
-    ret = avformat_write_header(output_format_ctx, NULL);
-    if (ret < 0) {
-        fprintf(stderr, "Error writing header: %s\n", av_err2str(ret));
+
+    buffersink_ctx = createFilter(graph, "buffersink", "buffersink",NULL);
+    if (!buffersink_ctx){
+        fprintf(stderr, "Cannot create buffer sink\n");
         goto end;
     }
-printf("55555555555555555555555555555555555\n");
-    // 添加字幕流到输出视频文件
-    for (int i = 0; i < num_subtitles; i++) {
-        // 添加字幕流
-        AVStream *subtitle_stream = avformat_new_stream(output_format_ctx, NULL);
-        if (!subtitle_stream) {
-            fprintf(stderr, "Failed allocating subtitle stream\n");
-            ret = AVERROR_UNKNOWN;
-            goto end;
-        }
-
-        // 设置字幕流的参数
-        AVCodecParameters *codecpar = subtitle_stream->codecpar;
-        codecpar->codec_type = AVMEDIA_TYPE_SUBTITLE;
-        codecpar->codec_id = AV_CODEC_ID_TEXT;
-
-        // 打开字幕文件
-        FILE *subtitle_file = fopen(input_subtitles[i], "r");
-        if (!subtitle_file) {
-            fprintf(stderr, "Failed to open subtitle file: %s\n", input_subtitles[i]);
-            ret = AVERROR_UNKNOWN;
-            goto end;
-        }
-
-        // 读取并写入字幕数据
-        transferSubtitles(subtitle_file,output_format_ctx,subtitle_stream);
-
-        // 关闭字幕文件
-        fclose(subtitle_file);
-    }
-
-printf("666666666666666666666666666666666666\n");
-    // 写入流数据
-    while (1) {
-        ret = av_read_frame(input_format_ctx, &packet);
-        if (ret < 0) break;
-
-        AVStream *in_stream, *out_stream;
-        in_stream = input_format_ctx->streams[packet.stream_index];
-        out_stream = output_format_ctx->streams[packet.stream_index];
-
-        // 调整包的时间戳等信息
-        av_packet_rescale_ts(&packet, in_stream->time_base, out_stream->time_base);
-        packet.pts = av_rescale_q_rnd(packet.pts, in_stream->time_base, out_stream->time_base, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX);
-        packet.dts = av_rescale_q_rnd(packet.dts, in_stream->time_base, out_stream->time_base, AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX);
-        packet.duration = av_rescale_q(packet.duration, in_stream->time_base, out_stream->time_base);
-        packet.pos = -1;
-
-        // 写包到输出流
-        av_interleaved_write_frame(output_format_ctx, &packet);
-        av_packet_unref(&packet);
-    }
-printf("77777777777777777777777777777777777777\n");
-    // 写输出文件的文件尾
-    ret = av_write_trailer(output_format_ctx);
+    
+    /*ret = av_opt_set_int_list(buffersink_ctx, "pix_fmts", &en_vctx->pix_fmt,
+                            AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
     if (ret < 0) {
-        fprintf(stderr, "Error writing trailer: %s\n", av_err2str(ret));
+        fprintf(stderr, "Cannot set output pixel format\n");
+        goto end;
+    }
+    printf("sink pixfmts{%d}\n",en_vctx->pix_fmt);*/
+
+    
+    inputs = avfilter_inout_alloc();
+    if(!inputs){
+        fprintf(stderr, "Cannot create outputs\n");
+        goto end;
+    }
+    inputs->name = av_strdup("out");
+    inputs->filter_ctx = buffersink_ctx;
+    inputs->pad_idx = 0;
+    inputs->next = NULL;
+    
+    ret = avfilter_graph_parse_ptr(graph,filter_desc_str,&inputs,&outputs[0],NULL);
+    //ret = avfilter_graph_parse_ptr(graph,filter_desc_str,NULL,NULL,NULL);
+    if (ret < 0) {
+        fprintf(stderr, "Cannot create filter map[%s]\n",filter_desc_str);
+        goto end;
+    }
+    
+    ret = avfilter_graph_config(graph, NULL);
+    if (ret < 0) {
+        fprintf(stderr, "Cannot config filter map[%s] err[%s]\n",filter_desc_str,av_err2str(ret));
+        goto end;
     }
 
 end:
-    // 清理资源
-    avformat_close_input(&input_format_ctx);
-    if (output_format_ctx && !(output_format_ctx->oformat->flags & AVFMT_NOFILE))
-        avio_closep(&output_format_ctx->pb);
-    avformat_free_context(output_format_ctx);
-
+    for(int i=0;i<num_ic;i++) {
+        avfilter_inout_free(&outputs[i]);
+    }
+    avfilter_inout_free(&inputs);
     return ret;
 }
 
-int transferSubtitles(FILE *subtitle_file,AVFormatContext *output_format_ctx, AVStream *subtitle_stream) {
+
+// 创建视频流的 AVCodecParameters
+AVCodecParameters* create_video_codec_params(int width, int height, int bitrate, AVRational framerate, enum AVPixelFormat pix_fmt,AVRational aspect_ratio) {
+    AVCodecParameters *codec_params = avcodec_parameters_alloc();
+    if (!codec_params) {
+        return NULL;
+    }
+
+    codec_params->codec_type = AVMEDIA_TYPE_VIDEO;
+    codec_params->codec_id = AV_CODEC_ID_H264; // 例如：H.264编码器
+    codec_params->width = width;
+    codec_params->height = height;
+    codec_params->bit_rate = bitrate;
+    codec_params->format = pix_fmt;
+    codec_params->framerate = framerate;
+    codec_params->sample_aspect_ratio = aspect_ratio;
+    
+    // 其他视频流参数设置...
+
+    return codec_params;
+}
+
+
+// 创建音频流的 AVCodecParameters
+AVCodecParameters* create_audio_codec_params(int sample_rate, enum AVCodecID codec_id, int bitrate) {
+    AVCodecParameters *codec_params = avcodec_parameters_alloc();
+    if (!codec_params) {
+        return NULL;
+    }
+    codec_params->codec_type = AVMEDIA_TYPE_AUDIO;
+    codec_params->codec_id = codec_id; 
+    codec_params->sample_rate = sample_rate;
+    codec_params->bit_rate = bitrate;
+    //codec_params->frame_size
+    const AVCodec *codec = avcodec_find_encoder(codec_id);
+    if (!codec) {
+        fprintf(stderr, "Codec not found\n");
+        avcodec_parameters_free(&codec_params);
+        return NULL;
+    }
+    select_channel_layout(codec,&codec_params->ch_layout);
+    
+    // 其他音频流参数设置...
+
+    return codec_params;
+}
+
+// 创建字幕流的 AVCodecParameters
+AVCodecParameters* create_subtitle_codec_params() {
+    AVCodecParameters *codec_params = avcodec_parameters_alloc();
+    if (!codec_params) {
+        return NULL;
+    }
+
+    codec_params->codec_type = AVMEDIA_TYPE_SUBTITLE;
+    codec_params->codec_id = AV_CODEC_ID_TEXT; // 例如：文本字幕编码器
+    //codec_params->format = pix_fmt;
+
+    // 其他字幕流参数设置...
+    
+    return codec_params;
+}
+AVStream *create_stream(AVFormatContext *format_context, AVCodecParameters *codec_params,AVRational time_base) {
+    AVStream *stream = avformat_new_stream(format_context, NULL);
+    if (!stream) {
+        fprintf(stderr, "Failed to allocate new stream\n");
+        return NULL;
+    }
+    if (avcodec_parameters_copy(stream->codecpar, codec_params) < 0) {
+        fprintf(stderr, "Failed to copy codec parameters to stream\n");
+        return NULL;
+    }
+    stream->time_base = time_base;
+    
+    return stream;
+}
+
+AVCodecContext *create_codec_context(AVCodecParameters *codecpar,AVRational time_base, bool encode) {
+    const AVCodec *codec = NULL;
+    AVCodecContext *codec_ctx = NULL;
+
+    // 查找解码器（或编码器）
+    if(encode) {
+        codec = avcodec_find_encoder(codecpar->codec_id);
+    } else {
+        codec = avcodec_find_decoder(codecpar->codec_id);
+    }
+    if (!codec) {
+        // 如果找不到解码器（或编码器），处理错误
+        fprintf(stderr, "Unsupported codec %d!\n",codecpar->codec_id);
+        return NULL;
+    }
+
+    // 分配 AVCodecContext
+    codec_ctx = avcodec_alloc_context3(codec);
+    if (!codec_ctx) {
+        fprintf(stderr, "Failed to allocate codec context!\n");
+        return NULL;
+    }
+
+    // 将 AVCodecParameters 中的参数复制到 AVCodecContext 中
+    if (avcodec_parameters_to_context(codec_ctx, codecpar) < 0) {
+        fprintf(stderr, "Failed to copy codec parameters to codec context!\n");
+        avcodec_free_context(&codec_ctx);
+        return NULL;
+    }
+    codec_ctx->time_base = time_base;
+    if(!encode)
+        codec_ctx->pkt_timebase = time_base;
+    
+    // Open the codec
+    int ret = avcodec_open2(codec_ctx, codec, NULL);
+    if (ret < 0) {
+        fprintf(stderr, "Error opening codec: %s\n", av_err2str(ret));
+        avcodec_free_context(&codec_ctx);
+        return NULL;
+    }
+    if(encode)
+        printf("encode ");
+    else
+        printf("decode ");
+    if(codec_ctx->codec_type == AVMEDIA_TYPE_VIDEO) {
+        printf("video ");
+        printf("codec ctx created:id[%d]w[%d]h[%d] timebase{%d,%d} aspect_rati{%d,%d} pix_fmt[%d] bit_rate[%d]framerate[%d,%d]\n",
+            codec_ctx->codec_id,
+            codec_ctx->width,
+            codec_ctx->height,
+            codec_ctx->time_base.den,
+            codec_ctx->time_base.num,
+            codec_ctx->sample_aspect_ratio.den,
+            codec_ctx->sample_aspect_ratio.num,
+            codec_ctx->pix_fmt,
+            codec_ctx->bit_rate,
+            codec_ctx->framerate.den,
+            codec_ctx->framerate.num);
+    }
+    else if(codec_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {
+        printf("audio ");
+        printf("codec ctx created:id[%d]timebase{%d,%d}pix_fmt[%d] bit_rate[%d] sample_rate[%d] sample_fmt[%d] channels[%d]\n",
+            codec_ctx->codec_id,
+            codec_ctx->time_base.den,
+            codec_ctx->time_base.num,
+            codec_ctx->pix_fmt,
+            codec_ctx->bit_rate,
+            codec_ctx->sample_rate,
+            codec_ctx->sample_fmt,
+            codec_ctx->ch_layout.nb_channels);
+    }
+    else {
+        printf("type[%d] ",codec_ctx->codec_type);
+        printf("codec ctx created:id[%d]w[%d]h[%d] timebase{%d,%d} aspect_rati{%d,%d} pix_fmt[%d] bit_rate[%d] sample_rate[%d] sample_fmt[%d] channels[%d]\n",
+            codec_ctx->codec_id,
+            codec_ctx->width,
+            codec_ctx->height,
+            codec_ctx->time_base.den,
+            codec_ctx->time_base.num,
+            codec_ctx->sample_aspect_ratio.den,
+            codec_ctx->sample_aspect_ratio.num,
+            codec_ctx->pix_fmt,
+            codec_ctx->bit_rate,
+            codec_ctx->sample_rate,
+            codec_ctx->sample_fmt,
+            codec_ctx->ch_layout.nb_channels);
+    }
+    return codec_ctx;
+}
+
+
+AVFormatContext * create_oc(const char *outputFileName,AVRational time_base,AVCodecParameters *v_params,AVCodecParameters *a_params) {
+    AVFormatContext *formatCtx = NULL;
+    int ret;
+
+    // Open output file
+    ret = avformat_alloc_output_context2(&formatCtx, NULL, NULL, outputFileName);
+    if (ret < 0) {
+        fprintf(stderr, "Error allocating output context: %s\n", av_err2str(ret));
+        return NULL;
+    }
+
+    // Open output file
+    if (!(formatCtx->oformat->flags & AVFMT_NOFILE)) {
+        ret = avio_open(&formatCtx->pb, outputFileName, AVIO_FLAG_WRITE);
+        if (ret < 0) {
+            fprintf(stderr, "Error opening output file: %s\n", av_err2str(ret));
+            goto fail;
+        }
+    }
+
+    // Create a new video stream
+    if(v_params) {
+        if (!create_stream(formatCtx, v_params,time_base)) {
+            fprintf(stderr, "Failed creating video stream\n");
+            goto fail;
+        }
+    }
+    // Create a new audio stream
+    if(a_params) {
+        if (!create_stream(formatCtx, a_params,time_base)) {
+            fprintf(stderr, "Failed creating audio stream\n");
+            goto fail;
+        }
+    }    
+    return formatCtx;
+
+fail:
+    avformat_free_context(formatCtx);
+    return NULL;
+}
+
+
+int mergeVideos(const char **input_files, int num_input_files, const char *output_file, const char *filters_str) {
+    AVFormatContext *ic_array[num_input_files];
+    AVFormatContext *oc = NULL;
+    AVCodecContext *dec_vctx[num_input_files];
+    AVCodecContext *en_vctx = NULL;
+    
+    AVFilterGraph *filter_graph = NULL;
+    int ret = 0;
+
+    memset(&ic_array[0],0,num_input_files * sizeof(AVFormatContext *));
+    memset(&dec_vctx[0],0,num_input_files * sizeof(AVCodecContext *));
+    // Open input files and create array of input format contexts
+    for (int i = 0; i < num_input_files; i++) {
+        if (avformat_open_input(&ic_array[i], input_files[i], NULL, NULL) != 0) {
+            fprintf(stderr, "Could not open input file '%s'\n", input_files[i]);
+            goto end;
+        }
+
+        // Read stream information for each input file
+        if (avformat_find_stream_info(ic_array[i], NULL) < 0) {
+            fprintf(stderr, "Could not read stream info for input file '%s'\n", input_files[i]);
+            goto end;
+        }
+        print_stream_info(ic_array[i],0);
+        for(int j = 0; j < ic_array[i]->nb_streams; j++) {
+            if(ic_array[i]->streams[j]->codecpar->codec_type != AVMEDIA_TYPE_VIDEO)
+                continue;
+            dec_vctx[i] = create_codec_context(ic_array[i]->streams[j]->codecpar,ic_array[i]->streams[j]->time_base,false);
+            if(!dec_vctx[i]) {
+                printf("input stream %d codec init fail\n",i);
+                goto end;
+            }
+            break;
+        }
+        
+    }
+    // Create output format context and open output file
+    AVRational tb = (AVRational){ 1, 15360 };
+    AVCodecParameters *v_param = create_video_codec_params(1280,720, 2106102 ,(AVRational){ 30, 1 },AV_PIX_FMT_YUV420P,(AVRational){ 9, 16 });
+    oc = create_oc(output_file,tb,v_param,NULL);
+    if (!oc) {
+        fprintf(stderr, "Could not create output context\n");
+        goto end;
+    }
+
+    en_vctx = create_codec_context(v_param,tb,true);
+    if(!en_vctx) {
+        printf("output stream codec init fail\n");
+        goto end;
+    }
+    
+    // Write output file header
+    if (avformat_write_header(oc, NULL) < 0) {
+        fprintf(stderr, "Error occurred when writing header\n");
+        goto end;
+    }
+
+    // Initialize filter graph
+    filter_graph = avfilter_graph_alloc();
+    if (!filter_graph) {
+        fprintf(stderr, "Unable to create filter graph\n");
+        goto end;
+    }
+    //for video filter only
+    ret = create_vfilters_map(filter_graph,num_input_files,&dec_vctx[0],en_vctx,filters_str);
+    if (ret<0){
+        fprintf(stderr, "Cannot create filter map\n");
+        goto end;
+    }
+    /*
+    for(int i=0; i<filter_graph->nb_filters ;i++) {
+        AVFilterContext *filter_ctx = filter_graph->filters[i];
+        
+        if(!filter_ctx) {
+            goto end;
+        }
+        printf("inst_name[%s]name[%s]nb_inputs[%d]nb_outputs[%d]\n",
+            filter_ctx->name,
+            filter_ctx->filter->name,
+            filter_ctx->filter->nb_inputs,
+            filter_ctx->filter->nb_outputs);
+    }
+    char *disp = avfilter_graph_dump(filter_graph,NULL);
+    if(disp) {
+        printf("%s\n",disp);
+        av_free(disp);
+    }*/
+    
+    // Loop through input files and process frames
+    for (int i = 0; i < num_input_files; i++) {
+        char name[64];
+        snprintf(name,sizeof(name),"buffer_%d",i);
+        AVFilterContext *src = avfilter_graph_get_filter(filter_graph,name);
+        AVFilterContext *sink = avfilter_graph_get_filter(filter_graph,"buffersink");
+        if(!src || !sink) {
+            fprintf(stderr, "Cannot find filter src[%s] or sink[%s]\n",name,"buffersink");
+            goto end;
+        }
+
+        printf("packet start transforming for input%d[%s]\n",i,input_files[i]);
+        if(trans_vpacket(ic_array[i],dec_vctx[i],oc,en_vctx,src,sink) < 0){
+            fprintf(stderr, "Error occurred when transforming\n");
+            goto end;
+        }
+    }
+
+    // Write trailer to output file
+    if(av_write_trailer(oc)<0) {
+        fprintf(stderr, "Error occurred when writing trailer\n");
+        goto end;
+    }
+    
+end:
+    // Clean up and release resources
+    printf("============================================\n");
+    for (int i = 0; i < num_input_files; i++) {
+        if(ic_array[i]) {
+            avformat_close_input(&ic_array[i]);
+        }
+        if(dec_vctx[i]) {
+            avcodec_free_context(&dec_vctx[i]);
+        }
+    }
+
+    if (oc && !(oc->oformat->flags & AVFMT_NOFILE)) {
+        avio_closep(&oc->pb);
+    }
+   
+    if(oc) {
+        avformat_free_context(oc);
+    }
+    if(en_vctx)
+        avcodec_free_context(&en_vctx);
+   
+    if(filter_graph) {
+        avfilter_graph_free(&filter_graph);
+    }
+    printf("============================================\n");
+    return ret;
+}
+
+void writeFrame(FILE *f,AVFrame *frame) {
+    for(int i =0; i< frame->height ; i++) {
+        fwrite(frame->data[0]+i*frame->linesize[0],frame->width,1,f);
+    }
+    for(int i =0; i< frame->height/2 ; i++) {
+        fwrite(frame->data[1]+i*frame->linesize[1],frame->width/2,1,f);
+    }
+    for(int i =0; i< frame->height/2 ; i++) {
+        fwrite(frame->data[2]+i*frame->linesize[2],frame->width/2,1,f);
+    }
+}
+int trans_vpacket(AVFormatContext *ic,AVCodecContext *dec_ctx,AVFormatContext *oc,AVCodecContext *en_ctx,AVFilterContext *src_ctx,AVFilterContext *sink_ctx) {
+    AVPacket *pkt = av_packet_alloc();
+    AVPacket *filtered_pkt = av_packet_alloc();
+    AVFrame *frame = av_frame_alloc();
+    AVFrame *filtered_frame = av_frame_alloc();
+    int ret = -1;
+ 
+    while (av_read_frame(ic, pkt) >= 0) {
+        int in_stream_id = pkt->stream_index;
+        int out_stream_id = get_stream_index(oc,AVMEDIA_TYPE_VIDEO);
+        //printf("read pakcet from stream[%d] to stream[%d]\n",in_stream_id,out_stream_id);
+        if (out_stream_id>=0 && ic->streams[in_stream_id]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            //send packet for decoding
+            /*printf("src packet:timebase{%d,%d} pts[%d] dts[%d]\n",
+                    pkt->time_base.den,
+                    pkt->time_base.num,
+                    pkt->pts,
+                    pkt->dts);*/
+            /* rescale output packet timestamp values from codec to stream timebase */
+            //av_packet_rescale_ts(pkt, pkt->time_base, oc->streams[out_stream_id]->time_base);
+            ret = avcodec_send_packet(dec_ctx, pkt);
+            if (ret < 0) {
+                fprintf(stderr, "Error submitting a packet for decoding (%s)\n", av_err2str(ret));
+                goto end;
+            }
+            while(ret>=0) {
+                //receive the decoded data
+                ret = avcodec_receive_frame(dec_ctx, frame);
+                if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+                    break;
+                } else if (ret < 0) {
+                    fprintf(stderr, "Error during decoding (%s)\n", av_err2str(ret));
+                    goto end;
+                }
+                /*printf("decoded frame:pktdts[%d] timebase{%d,%d} pts[%d] bstpst[%d] sample_rate[%d]\n",
+                    frame->pkt_dts,
+                    frame->time_base.den,
+                    frame->time_base.num,
+                    frame->pts,
+                    frame->best_effort_timestamp,
+                    frame->sample_rate);*/
+                frame->pts = frame->best_effort_timestamp;
+                //发送到filter
+                //ret = av_buffersrc_write_frame(src_ctx, frame);
+                ret = av_buffersrc_add_frame_flags(src_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF);
+                if (ret < 0) {
+                    fprintf(stderr, "Error while writing frame to buffer source\n");
+                    goto end;
+                }
+                av_frame_unref(frame);   
+            }
+            av_packet_unref(pkt); 
+
+
+            while(1) {
+                //从flter读取
+                ret = av_buffersink_get_frame(sink_ctx, filtered_frame);
+                if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){
+                    break;
+                }
+                if (ret < 0) {
+                    fprintf(stderr, "Error while getting filtered frame from buffer sink\n");
+                    goto end;
+                }
+                /*printf("filtered frame:pktdts[%d] timebase{%d,%d} pts[%d] sample_rate[%d]\n",
+                    filtered_frame->pkt_dts,
+                    filtered_frame->time_base.den,
+                    filtered_frame->time_base.num,
+                    filtered_frame->pts,
+                    filtered_frame->sample_rate);*/
+                
+                // 编码AVFrame到AVPacket
+                ret = avcodec_send_frame(en_ctx, filtered_frame);
+                if (ret < 0) {
+                    fprintf(stderr, "Error while send filtered frame:%s\n",av_err2str(ret));
+                    goto end;
+                }
+                av_frame_unref(filtered_frame);
+            }
+            //接受经过filter过的包
+            while(1) {
+                ret = avcodec_receive_packet(en_ctx, filtered_pkt);
+                if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){
+                    break;
+                }
+                if (ret < 0) {
+                    fprintf(stderr, "Error while receiving filtered packet\n");
+                    goto end;
+                }
+                /*printf("filtered packet:timebase{%d,%d} pts[%d] dts[%d]\n",
+                    filtered_pkt->time_base.den,
+                    filtered_pkt->time_base.num,
+                    filtered_pkt->pts,
+                    filtered_pkt->dts);*/
+                filtered_pkt->time_base = oc->streams[out_stream_id]->time_base;
+                filtered_pkt->stream_index = out_stream_id;
+                ret = av_interleaved_write_frame(oc, filtered_pkt);
+                if (ret < 0) {
+                    fprintf(stderr, "Error while writing filtered packet to output file\n");
+                    goto end;
+                }
+                av_packet_unref(filtered_pkt); 
+            }
+        }
+        else {
+            //av_packet_rescale_ts(&packet, codec_ctx->time_base, output_stream->time_base);
+            /*ret = av_interleaved_write_frame(oc, pkt);
+            if (ret < 0) {
+                fprintf(stderr, "Error while writing packet to output file\n");
+                break;
+            }*/
+        }
+    }
+    
+    
+end:
+    av_packet_free(&pkt);
+    av_frame_free(&filtered_frame);
+    av_frame_free(&frame);
+    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+        return 0;
+    return ret;
+}
+
+
+
+int transferSubtitles(FILE *subtitle_file,AVFormatContext *oc, AVStream *subtitle_stream) {
     int subtitle_index = 0;
     char line[1024];
     AVPacket packet;
@@ -162,7 +719,7 @@ int transferSubtitles(FILE *subtitle_file,AVFormatContext *output_format_ctx, AV
                 int64_t end_time = end_hour * 3600000000LL + end_minute * 60000000LL + end_second * 1000000LL + end_millisecond * 1000LL;
                         printf("start:%d end:%d\n",start_time,end_time);
                 // 写入字幕数据包
-                //AVStream *subtitle_stream = output_format_ctx->streams[packet.stream_index];
+                //AVStream *subtitle_stream = oc->streams[packet.stream_index];
                 packet.pts = av_rescale_q(start_time, (AVRational){1, AV_TIME_BASE}, subtitle_stream->time_base);
                 packet.dts = av_rescale_q(end_time, (AVRational){1, AV_TIME_BASE}, subtitle_stream->time_base);
                 packet.duration = av_rescale_q(end_time - start_time, (AVRational){1, AV_TIME_BASE}, subtitle_stream->time_base);
@@ -189,7 +746,7 @@ int transferSubtitles(FILE *subtitle_file,AVFormatContext *output_format_ctx, AV
                     packet.duration,
                     packet.data);
                 // 写包到输出流
-                av_interleaved_write_frame(output_format_ctx, &packet);
+                av_interleaved_write_frame(oc, &packet);
                 printf("free allocated resources\n");
                 av_free(packet.data);
                 av_packet_unref(&packet);
