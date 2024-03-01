@@ -38,7 +38,7 @@ func Transform(db store.IStore) echo.HandlerFunc {
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "CombineFiles", err.Error()})
 		}
-		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "combine ok", ""})
+		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "transform ok", ""})
 	}
 }
 

@@ -105,9 +105,10 @@ int create_vfilters_map(AVFilterGraph *graph,int num_ic ,AVCodecContext **dec_vc
     char all_filter_str[1024+strlen(filter_desc_str)];
     int ret = -1;
     memset(all_filter_str,0,sizeof(all_filter_str));
+    
     for(int i=0; i<num_ic ;i++) {
-        snprintf(all_filter_str, sizeof(all_filter_str), "%sbuffer=video_size=%dx%d:pix_fmt=%d:frame_rate=%d/%d:time_base=%d/%d:pixel_aspect=%d/%d[%d];",
-            all_filter_str,
+        char tmp[512];
+        snprintf(tmp, sizeof(tmp), "buffer=video_size=%dx%d:pix_fmt=%d:frame_rate=%d/%d:time_base=%d/%d:pixel_aspect=%d/%d[%d];",
             dec_vctx_array[i]->width, 
             dec_vctx_array[i]->height, 
             dec_vctx_array[i]->pix_fmt,
@@ -118,19 +119,20 @@ int create_vfilters_map(AVFilterGraph *graph,int num_ic ,AVCodecContext **dec_vc
             dec_vctx_array[i]->sample_aspect_ratio.num, 
             dec_vctx_array[i]->sample_aspect_ratio.den,
             i);
+        strncat(all_filter_str,tmp,sizeof(all_filter_str)-strlen(all_filter_str));
     }
-    snprintf(all_filter_str,sizeof(all_filter_str),"%s%s;[outv]buffersink",all_filter_str,filter_desc_str);
+    strncat(all_filter_str,filter_desc_str,sizeof(all_filter_str)-strlen(all_filter_str));
+    strncat(all_filter_str,";[outv]buffersink",sizeof(all_filter_str)-strlen(all_filter_str));
 
-    printf("[%s]\n",all_filter_str);
     ret = avfilter_graph_parse_ptr(graph,all_filter_str,NULL,NULL,NULL);
     if (ret < 0) {
-        fprintf(stderr, "Cannot parse filter map[%s] err[%s]\n",filter_desc_str,av_err2str(ret));
+        fprintf(stderr, "Cannot parse filter map[%s] err[%s]\n",all_filter_str,av_err2str(ret));
         return ret;
     }
     
     ret = avfilter_graph_config(graph, NULL);
     if (ret < 0) {
-        fprintf(stderr, "Cannot config filter map[%s] err[%s]\n",filter_desc_str,av_err2str(ret));
+        fprintf(stderr, "Cannot config filter map[%s] err[%s]\n",all_filter_str,av_err2str(ret));
         return ret;
     }
     return ret;
@@ -259,7 +261,7 @@ AVCodecContext *create_codec_context(AVCodecParameters *codecpar,AVRational time
         printf("decode ");
     if(codec_ctx->codec_type == AVMEDIA_TYPE_VIDEO) {
         printf("video ");
-        printf("codec ctx created:id[%d]w[%d]h[%d] timebase{%d,%d} aspect_rati{%d,%d} pix_fmt[%d] bit_rate[%d]framerate[%d,%d]\n",
+        printf("codec ctx created:id[%d]w[%d]h[%d] timebase{%d,%d} aspect_rati{%d,%d} pix_fmt[%d] bit_rate[%ld]framerate[%d,%d]\n",
             codec_ctx->codec_id,
             codec_ctx->width,
             codec_ctx->height,
@@ -274,7 +276,7 @@ AVCodecContext *create_codec_context(AVCodecParameters *codecpar,AVRational time
     }
     else if(codec_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {
         printf("audio ");
-        printf("codec ctx created:id[%d]timebase{%d,%d}pix_fmt[%d] bit_rate[%d] sample_rate[%d] sample_fmt[%d] channels[%d]\n",
+        printf("codec ctx created:id[%d]timebase{%d,%d}pix_fmt[%d] bit_rate[%ld] sample_rate[%d] sample_fmt[%d] channels[%d]\n",
             codec_ctx->codec_id,
             codec_ctx->time_base.den,
             codec_ctx->time_base.num,
@@ -286,7 +288,7 @@ AVCodecContext *create_codec_context(AVCodecParameters *codecpar,AVRational time
     }
     else {
         printf("type[%d] ",codec_ctx->codec_type);
-        printf("codec ctx created:id[%d]w[%d]h[%d] timebase{%d,%d} aspect_rati{%d,%d} pix_fmt[%d] bit_rate[%d] sample_rate[%d] sample_fmt[%d] channels[%d]\n",
+        printf("codec ctx created:id[%d]w[%d]h[%d] timebase{%d,%d} aspect_rati{%d,%d} pix_fmt[%d] bit_rate[%ld] sample_rate[%d] sample_fmt[%d] channels[%d]\n",
             codec_ctx->codec_id,
             codec_ctx->width,
             codec_ctx->height,
@@ -691,7 +693,7 @@ int transferSubtitles(FILE *subtitle_file,AVFormatContext *oc, AVStream *subtitl
                 printf("start:%s end:%s\n",start_time_str,end_time_str);
                 int64_t start_time = start_hour * 3600000000LL + start_minute * 60000000LL + start_second * 1000000LL + start_millisecond * 1000LL;
                 int64_t end_time = end_hour * 3600000000LL + end_minute * 60000000LL + end_second * 1000000LL + end_millisecond * 1000LL;
-                        printf("start:%d end:%d\n",start_time,end_time);
+                        printf("start:%ld end:%ld\n",start_time,end_time);
                 // 写入字幕数据包
                 //AVStream *subtitle_stream = oc->streams[packet.stream_index];
                 packet.pts = av_rescale_q(start_time, (AVRational){1, AV_TIME_BASE}, subtitle_stream->time_base);
@@ -714,7 +716,7 @@ int transferSubtitles(FILE *subtitle_file,AVFormatContext *oc, AVStream *subtitl
                     }
                     packet.data = ptext;
                 }
-                printf("pts[%d]dts[%d]duration[%d]txt[%s]\n",
+                printf("pts[%ld]dts[%ld]duration[%ld]txt[%s]\n",
                     packet.pts,
                     packet.dts,
                     packet.duration,
