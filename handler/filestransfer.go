@@ -13,6 +13,35 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+func Transform(db store.IStore) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userid := c.Get("userid").(string)
+		tokentype := c.Get("jwttype").(string)
+
+		user, err := db.GetUserByID(userid)
+		if err != nil {
+			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "bad user id", ""})
+		}
+		if user.Enable2FA == true && tokentype != "2FA" {
+			return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{0, "need to pass 2FA auth first", ""})
+		}
+		var request jsonHTTPCombineFiles
+		/*request := jsonHTTPCombineFiles{
+			Opts:       map[string]interface{}{"scale": "w=1280:h=720", "duration": "1.5"},
+		}*/
+		if err := c.Bind(&request); err != nil {
+			return c.JSON(http.StatusBadRequest, jsonHTTPResponse{0, "Bad post data", err.Error()})
+		}
+		//fmt.Println(request)
+		output_path := filepath.Join("public", "works", user.Username)
+		err = util.Transform(request.Files, output_path, request.OutputFile, request.Opts.(map[string]interface{}))
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{0, "CombineFiles", err.Error()})
+		}
+		return c.JSON(http.StatusOK, jsonHTTPResponse{1, "combine ok", ""})
+	}
+}
+
 func CombineFiles(db store.IStore) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		userid := c.Get("userid").(string)

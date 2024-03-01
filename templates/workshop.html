@@ -64,6 +64,52 @@
                 }
             }
         }
+
+        function transformSelected() {
+            var selectedFiles = [];
+            var checkboxes = document.querySelectorAll('#fileTable tbody input[type="checkbox"]:checked');
+            var outputFilename = document.getElementById('transformFilename').value;
+            var filterComplex = document.getElementById('filterComplex').value;
+			
+            checkboxes.forEach(function (checkbox) {
+                var row = checkbox.closest('tr');
+                //var name = row.cells[1].innerText; // Assuming the name is in the second column
+                var name = row.cells[1].querySelector('a').getAttribute('href');
+                //var encodedName = encodeURIComponent(name);
+                selectedFiles.push(name);
+            });
+			if(selectedFiles.length === 0) {
+                $('#transform-errorMessage').text('请选则需要合成的文件');
+				return
+			}
+			$('#transform-errorMessage').text("正在合成文件..."+outputFilename)
+            // Send the selected files to the backend using AJAX (you can use fetch or other libraries)
+            fetch('/transform', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ outputfile: outputFilename, 
+                    files: selectedFiles , 
+                    meta: {
+                            filters: filterComplex,
+                        }}),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    $('#transform-errorMessage').text(response.json().message + response.json().meta)
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Handle the response from the backend
+                console.log(data);
+                $('#transform-errorMessage').text(data.message)
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+        }
         
         function combineSelected() {
             var selectedFiles = [];
@@ -207,7 +253,7 @@
                                 <input type="text" id="combineFilename" value="" placeholder="File Name" />
                             </div>
                             <div class="col-6 col-12-xsmall">
-                                <input type="text" id="filterComplex" value="" placeholder="[0:v][1:v]blend=all_expr='A*B'" />
+                                <input type="text" id="filter" value="" placeholder="[0:v][1:v]blend=all_expr='A*B'" />
                             </div>
                             <div class="col-6 col-12-xsmall">
                                 <select name="demo-category" id="resolutionSelect">
@@ -251,6 +297,23 @@
                                 </ul>
                             </div>
                             <div class="error-message" id="errorMessage"></div>
+                        </div>
+                    </form>
+                    <form action="javascript:transformSelected()">
+                        <div class="row gtr-uniform">
+                            <div class="col-6 col-12-xsmall">
+                                <input type="text" id="transformFilename" value="" placeholder="File Name" />
+                            </div>
+                            <div class="col-6 col-12-xsmall">
+                                <input type="text" id="filterComplex" value="" placeholder="[0:v][1:v]blend=all_expr='A*B'" />
+                            </div>
+                            <div class="col-12">
+                                <ul class="actions">
+                                    <li><input type="submit" value="transform Selected Items" class="primary" /></li>
+                                    <li><input type="reset" value="Reset" /></li>
+                                </ul>
+                            </div>
+                            <div class="error-message" id="transform-errorMessage"></div>
                         </div>
                     </form>
                 </section>

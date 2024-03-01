@@ -39,19 +39,16 @@ func AddSubtitlesToVideo(inputVideo string, inputSubtitles []string, outputVideo
 }
 */
 
-func MergeVideos(inputVideos []string, outputVideo string, options string) error {
+func transformVideos(inputVideos []string, outputVideo string, opts ...map[string]interface{}) error {
+	var options string
+	for _, opt := range opts {
+		value, ok := opt["filters"]
+		if ok {
+			options = value.(string)
+		}
+	}
+	fmt.Println("filters:" + options)
 	// 将 Go 字符串转换为 C 字符串
-	//var options string
-	//for i := 0; i < len(inputVideos); i++ {
-	//options += fmt.Sprintf("scale=w=4096:h=2160:force_original_aspect_ratio=decrease,")
-	//options += fmt.Sprintf("pad=w=4096:h=2160")
-	//}
-	//for i := 0; i < len(inputVideos); i++ {
-	//	options += fmt.Sprintf("[pad%d]", i)
-	//}
-	//options += fmt.Sprintf("concat=n=%d", len(inputVideos)) + ":v=1:a=0[out],"
-	//options = strings.TrimSuffix(options, ",")
-	outputVideo += "000.mp4"
 	optionC := C.CString(options)
 	outputVideoC := C.CString(outputVideo)
 	defer C.free(unsafe.Pointer(optionC))
@@ -66,9 +63,9 @@ func MergeVideos(inputVideos []string, outputVideo string, options string) error
 	}
 
 	// 调用 C 函数
-	ret := C.mergeVideos((**C.char)(unsafe.Pointer(&inputVideosC[0])), C.int(numVideos), outputVideoC, optionC)
+	ret := C.transformVideos((**C.char)(unsafe.Pointer(&inputVideosC[0])), C.int(numVideos), outputVideoC, optionC)
 	if ret < 0 {
-		return fmt.Errorf("add subtitles fail: %d", ret)
+		return fmt.Errorf("transformVideos fail: %d", ret)
 		//return errors.New(fmt.Sprintf("Failed to add subtitles, error code: %d", ret))
 	}
 	return nil
@@ -136,9 +133,9 @@ func buildFilterComplex(n int, filter *strings.Builder, opts ...map[string]inter
 		filter.WriteString(fmt.Sprintf("[v%d]", i))
 	}
 
-	filter.WriteString(fmt.Sprintf("concat=n=%d:v=1:a=0[out]", n))
+	filter.WriteString(fmt.Sprintf("concat=n=%d:v=1:a=0[outv]", n))
 
-	return "[out]"
+	return "[outv]"
 }
 
 func scaleImgFiles(imageFiles []string, outputDir string, opts ...map[string]interface{}) ([]string, error) {
@@ -199,8 +196,6 @@ func mergeVideoFiles(videoFiles []string, outputFile string, opts ...map[string]
 	complexFilterName := buildFilterComplex(len(videoFiles), &filter, opts...)
 
 	cmdArgs = append(cmdArgs, "-filter_complex", filter.String(), "-map", complexFilterName)
-	//for test
-	MergeVideos(videoFiles, outputFile, filter.String())
 
 	cmdArgs = append(cmdArgs, outputFile)
 	fmt.Printf("ffmpeg %s\n", strings.Join(cmdArgs, " "))

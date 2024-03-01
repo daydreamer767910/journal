@@ -15,8 +15,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct{
+AVFormatContext *ic;
+AVFormatContext *oc;
+AVCodecContext *dec_ctx;
+AVCodecContext *en_ctx;
+AVFilterContext *src_ctx;
+AVFilterContext *sink_ctx;
+}TRANSFORM_INFO;
+
 int transferSubtitles(FILE *subtitle_file,AVFormatContext *output_format_ctx, AVStream *subtitle_stream);
-int trans_vpacket(AVFormatContext *ic,AVCodecContext *dec_ctx,AVFormatContext *oc,AVCodecContext *en_ctx,AVFilterContext *src_ctx,AVFilterContext *sink_ctx);
+int trans_vpacket(TRANSFORM_INFO *info,int64_t time_offset);
 
 /**
      * Merge the input video files into the ouput file.
@@ -31,5 +40,5 @@ int trans_vpacket(AVFormatContext *ic,AVCodecContext *dec_ctx,AVFormatContext *o
      * @returns >=0 on success otherwise an error code.
      *          AVERROR(ENOSYS) on unsupported commands
      */
-int mergeVideos(const char **input_files, int num_input_files, const char *output_file, const char *filters_str);
+int transformVideos(const char **input_files, int num_input_files, const char *output_file, const char *filters_str);
 #endif

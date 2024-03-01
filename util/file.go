@@ -176,6 +176,21 @@ func getThumbnail(directoryPath string, fileName string) (Thumbnail string, Thum
 	return
 }
 
+func Transform(files []string, outputDir string, outputFile string, opts ...map[string]interface{}) error {
+	// 创建输出目录
+	err := os.MkdirAll(outputDir, 0755)
+	if err != nil {
+		fmt.Println("Failed to create output directory:", err)
+		return err
+	}
+	err = transformVideos(files, filepath.Join(outputDir, outputFile), opts...)
+	if err != nil {
+		fmt.Println("transformVideos:", err)
+		return err
+	}
+	return nil
+}
+
 func CombineFiles(files []string, outputDir string, outputFile string, opts ...map[string]interface{}) error {
 	var imageFiles []string
 	var audioFiles []string

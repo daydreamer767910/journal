@@ -96,6 +96,7 @@ func main() {
 	app.GET(util.BasePath+"/video", handler.VideoPage(db), handler.ValidJWT)
 	app.GET(util.BasePath+"/logout", handler.LogoutPage(db), handler.ValidJWT)
 
+	app.POST(util.BasePath+"/transform", handler.Transform(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/combine", handler.CombineFiles(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/listfile", handler.ListFiles(db), handler.ValidJWT)
 	app.POST(util.BasePath+"/listworkshop", handler.ListWorkshop(db), handler.ValidJWT)

@@ -101,92 +101,38 @@ AVFilterContext * createFilter(AVFilterGraph *filter_graph,char *name,char *inst
     return filter_ctx;
 }
 
-int create_vfilters_map(AVFilterGraph *graph,int num_ic ,AVCodecContext **dec_vctx_array,AVCodecContext *en_vctx,const char *filter_desc_str) {
-    AVFilterContext *buffersrc_ctx_array[num_ic];
-    AVFilterContext *buffersink_ctx = NULL;
-    
-    AVFilterInOut *inputs = NULL;
-    AVFilterInOut *outputs[num_ic];
-    char args[512];
-    char name[64];
+int create_vfilters_map(AVFilterGraph *graph,int num_ic ,AVCodecContext **dec_vctx_array,const char *filter_desc_str) {
+    char all_filter_str[1024+strlen(filter_desc_str)];
     int ret = -1;
-    memset(buffersrc_ctx_array,0,num_ic*sizeof(AVFilterContext*));
-    memset(outputs,0,num_ic*sizeof(AVFilterInOut*));
+    memset(all_filter_str,0,sizeof(all_filter_str));
     for(int i=0; i<num_ic ;i++) {
-        snprintf(args, sizeof(args), "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+        snprintf(all_filter_str, sizeof(all_filter_str), "%sbuffer=video_size=%dx%d:pix_fmt=%d:frame_rate=%d/%d:time_base=%d/%d:pixel_aspect=%d/%d[%d];",
+            all_filter_str,
             dec_vctx_array[i]->width, 
             dec_vctx_array[i]->height, 
             dec_vctx_array[i]->pix_fmt,
+            dec_vctx_array[i]->framerate.num,
+            dec_vctx_array[i]->framerate.den,
             dec_vctx_array[i]->time_base.num, 
             dec_vctx_array[i]->time_base.den,
             dec_vctx_array[i]->sample_aspect_ratio.num, 
-            dec_vctx_array[i]->sample_aspect_ratio.den);
-
-        printf("buffer_%d[%s]\n",i,args);
-        snprintf(name,sizeof(name),"buffer_%d",i);
-        buffersrc_ctx_array[i] = createFilter(graph, "buffer",name, args);
-        if (!buffersrc_ctx_array[i]) {
-            fprintf(stderr, "Cannot create buffer source\n");
-            goto end;
-        }
-        outputs[i] = avfilter_inout_alloc();
-        if(!outputs[i]){
-            fprintf(stderr, "Cannot create outputs\n");
-            goto end;
-        }
-        snprintf(name,sizeof(name),"%d",i);
-        outputs[i]->name = av_strdup(name);
-        outputs[i]->filter_ctx = buffersrc_ctx_array[i];
-        outputs[i]->pad_idx = 0;
-        outputs[i]->next = NULL;
-        if(i>0) {
-            outputs[i-1]->next = outputs[i];
-        }
+            dec_vctx_array[i]->sample_aspect_ratio.den,
+            i);
     }
+    snprintf(all_filter_str,sizeof(all_filter_str),"%s%s;[outv]buffersink",all_filter_str,filter_desc_str);
 
-    buffersink_ctx = createFilter(graph, "buffersink", "buffersink",NULL);
-    if (!buffersink_ctx){
-        fprintf(stderr, "Cannot create buffer sink\n");
-        goto end;
-    }
-    
-    /*ret = av_opt_set_int_list(buffersink_ctx, "pix_fmts", &en_vctx->pix_fmt,
-                            AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
+    printf("[%s]\n",all_filter_str);
+    ret = avfilter_graph_parse_ptr(graph,all_filter_str,NULL,NULL,NULL);
     if (ret < 0) {
-        fprintf(stderr, "Cannot set output pixel format\n");
-        goto end;
-    }
-    printf("sink pixfmts{%d}\n",en_vctx->pix_fmt);*/
-
-    
-    inputs = avfilter_inout_alloc();
-    if(!inputs){
-        fprintf(stderr, "Cannot create outputs\n");
-        goto end;
-    }
-    inputs->name = av_strdup("out");
-    inputs->filter_ctx = buffersink_ctx;
-    inputs->pad_idx = 0;
-    inputs->next = NULL;
-    
-    ret = avfilter_graph_parse_ptr(graph,filter_desc_str,&inputs,&outputs[0],NULL);
-    //ret = avfilter_graph_parse_ptr(graph,filter_desc_str,NULL,NULL,NULL);
-    if (ret < 0) {
-        fprintf(stderr, "Cannot create filter map[%s]\n",filter_desc_str);
-        goto end;
+        fprintf(stderr, "Cannot parse filter map[%s] err[%s]\n",filter_desc_str,av_err2str(ret));
+        return ret;
     }
     
     ret = avfilter_graph_config(graph, NULL);
     if (ret < 0) {
         fprintf(stderr, "Cannot config filter map[%s] err[%s]\n",filter_desc_str,av_err2str(ret));
-        goto end;
+        return ret;
     }
-
-end:
-    for(int i=0;i<num_ic;i++) {
-        avfilter_inout_free(&outputs[i]);
-    }
-    avfilter_inout_free(&inputs);
     return ret;
 }
 
@@ -400,7 +346,7 @@ fail:
 }
 
 
-int mergeVideos(const char **input_files, int num_input_files, const char *output_file, const char *filters_str) {
+int transformVideos(const char **input_files, int num_input_files, const char *output_file, const char *filters_str) {
     AVFormatContext *ic_array[num_input_files];
     AVFormatContext *oc = NULL;
     AVCodecContext *dec_vctx[num_input_files];
@@ -464,46 +410,66 @@ int mergeVideos(const char **input_files, int num_input_files, const char *outpu
         goto end;
     }
     //for video filter only
-    ret = create_vfilters_map(filter_graph,num_input_files,&dec_vctx[0],en_vctx,filters_str);
-    if (ret<0){
+    ret = create_vfilters_map(filter_graph,num_input_files,&dec_vctx[0],filters_str);
+    //there must be at least 3 filters including num_input_files's buffer src and 1 sink
+    if (ret<0 || filter_graph->nb_filters < num_input_files+1){
         fprintf(stderr, "Cannot create filter map\n");
         goto end;
     }
-    /*
-    for(int i=0; i<filter_graph->nb_filters ;i++) {
+    
+    /*for(int i=0; i<filter_graph->nb_filters ;i++) {
         AVFilterContext *filter_ctx = filter_graph->filters[i];
-        
-        if(!filter_ctx) {
-            goto end;
-        }
-        printf("inst_name[%s]name[%s]nb_inputs[%d]nb_outputs[%d]\n",
+        printf("[%s]name[%s]nb_inputs[%d]nb_outputs[%d]---",
             filter_ctx->name,
             filter_ctx->filter->name,
             filter_ctx->filter->nb_inputs,
             filter_ctx->filter->nb_outputs);
-    }
+        for(int j=0;j<filter_ctx->nb_inputs;j++) {
+            printf("src:[%s]name[%s]nb_inputs[%d]nb_outputs[%d]---",
+                filter_ctx->inputs[j]->src->name,
+                filter_ctx->inputs[j]->src->filter->name,
+                filter_ctx->inputs[j]->src->filter->nb_inputs,
+                filter_ctx->inputs[j]->src->filter->nb_outputs);
+        }
+        for(int j=0;j<filter_ctx->nb_outputs;j++) {
+            printf("dst:[%s]name[%s]nb_inputs[%d]nb_outputs[%d]---",
+                filter_ctx->outputs[j]->dst->name,
+                filter_ctx->outputs[j]->dst->filter->name,
+                filter_ctx->outputs[j]->dst->filter->nb_inputs,
+                filter_ctx->outputs[j]->dst->filter->nb_outputs);
+        }
+
+        printf("\n");
+    }*/
+    
     char *disp = avfilter_graph_dump(filter_graph,NULL);
     if(disp) {
         printf("%s\n",disp);
         av_free(disp);
-    }*/
+    }
     
     // Loop through input files and process frames
     for (int i = 0; i < num_input_files; i++) {
-        char name[64];
-        snprintf(name,sizeof(name),"buffer_%d",i);
-        AVFilterContext *src = avfilter_graph_get_filter(filter_graph,name);
-        AVFilterContext *sink = avfilter_graph_get_filter(filter_graph,"buffersink");
-        if(!src || !sink) {
-            fprintf(stderr, "Cannot find filter src[%s] or sink[%s]\n",name,"buffersink");
+        TRANSFORM_INFO info;
+        int64_t ts_offset = 0;
+        //char name[64];
+        //snprintf(name,sizeof(name),"buffer_%d",i);
+        info.src_ctx = filter_graph->filters[i];
+        info.sink_ctx = filter_graph->filters[filter_graph->nb_filters-1];
+        if(!info.src_ctx || !info.sink_ctx) {
+            fprintf(stderr, "Cannot find filter buffer src or sink\n");
             goto end;
         }
-
+        info.ic = ic_array[i];
+        info.oc = oc;
+        info.dec_ctx = dec_vctx[i];
+        info.en_ctx = en_vctx;
         printf("packet start transforming for input%d[%s]\n",i,input_files[i]);
-        if(trans_vpacket(ic_array[i],dec_vctx[i],oc,en_vctx,src,sink) < 0){
+        if(ret = trans_vpacket(&info,ts_offset) < 0){
             fprintf(stderr, "Error occurred when transforming\n");
             goto end;
         }
+        ts_offset += info.ic->duration;
     }
 
     // Write trailer to output file
@@ -552,34 +518,39 @@ void writeFrame(FILE *f,AVFrame *frame) {
         fwrite(frame->data[2]+i*frame->linesize[2],frame->width/2,1,f);
     }
 }
-int trans_vpacket(AVFormatContext *ic,AVCodecContext *dec_ctx,AVFormatContext *oc,AVCodecContext *en_ctx,AVFilterContext *src_ctx,AVFilterContext *sink_ctx) {
+
+
+int trans_vpacket(TRANSFORM_INFO *info,int64_t time_offset) {
     AVPacket *pkt = av_packet_alloc();
     AVPacket *filtered_pkt = av_packet_alloc();
     AVFrame *frame = av_frame_alloc();
     AVFrame *filtered_frame = av_frame_alloc();
+    
     int ret = -1;
  
-    while (av_read_frame(ic, pkt) >= 0) {
+    while (av_read_frame(info->ic, pkt) >= 0) {
         int in_stream_id = pkt->stream_index;
-        int out_stream_id = get_stream_index(oc,AVMEDIA_TYPE_VIDEO);
+        int out_stream_id = get_stream_index(info->oc,AVMEDIA_TYPE_VIDEO);
+        AVStream *istream = info->ic->streams[in_stream_id];
+        AVStream *ostream = info->oc->streams[out_stream_id];
         //printf("read pakcet from stream[%d] to stream[%d]\n",in_stream_id,out_stream_id);
-        if (out_stream_id>=0 && ic->streams[in_stream_id]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+        if (out_stream_id>=0 && istream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
             //send packet for decoding
-            /*printf("src packet:timebase{%d,%d} pts[%d] dts[%d]\n",
-                    pkt->time_base.den,
-                    pkt->time_base.num,
+            /*printf("src packet:timebase{%d,%d} pts[%d] dts[%d] duration[%d]\n",
+                    istream->time_base.den,
+                    istream->time_base.num,
                     pkt->pts,
-                    pkt->dts);*/
-            /* rescale output packet timestamp values from codec to stream timebase */
-            //av_packet_rescale_ts(pkt, pkt->time_base, oc->streams[out_stream_id]->time_base);
-            ret = avcodec_send_packet(dec_ctx, pkt);
+                    pkt->dts,
+                    pkt->duration);*/
+            
+            ret = avcodec_send_packet(info->dec_ctx, pkt);
             if (ret < 0) {
                 fprintf(stderr, "Error submitting a packet for decoding (%s)\n", av_err2str(ret));
                 goto end;
             }
-            while(ret>=0) {
+            while(1) {
                 //receive the decoded data
-                ret = avcodec_receive_frame(dec_ctx, frame);
+                ret = avcodec_receive_frame(info->dec_ctx, frame);
                 if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
                     break;
                 } else if (ret < 0) {
@@ -593,22 +564,21 @@ int trans_vpacket(AVFormatContext *ic,AVCodecContext *dec_ctx,AVFormatContext *o
                     frame->pts,
                     frame->best_effort_timestamp,
                     frame->sample_rate);*/
-                frame->pts = frame->best_effort_timestamp;
+                frame->pts = frame->best_effort_timestamp + time_offset;
+                frame->pkt_dts += time_offset;
                 //发送到filter
-                //ret = av_buffersrc_write_frame(src_ctx, frame);
-                ret = av_buffersrc_add_frame_flags(src_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF);
+                ret = av_buffersrc_write_frame(info->src_ctx, frame);
+                //ret = av_buffersrc_add_frame_flags(info->src_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF);
                 if (ret < 0) {
                     fprintf(stderr, "Error while writing frame to buffer source\n");
                     goto end;
                 }
-                av_frame_unref(frame);   
+                av_frame_unref(frame);
             }
             av_packet_unref(pkt); 
-
-
             while(1) {
                 //从flter读取
-                ret = av_buffersink_get_frame(sink_ctx, filtered_frame);
+                ret = av_buffersink_get_frame(info->sink_ctx, filtered_frame);
                 if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){
                     break;
                 }
@@ -622,18 +592,19 @@ int trans_vpacket(AVFormatContext *ic,AVCodecContext *dec_ctx,AVFormatContext *o
                     filtered_frame->time_base.num,
                     filtered_frame->pts,
                     filtered_frame->sample_rate);*/
-                
+                filtered_frame->pts = filtered_frame->pkt_dts;
                 // 编码AVFrame到AVPacket
-                ret = avcodec_send_frame(en_ctx, filtered_frame);
+                ret = avcodec_send_frame(info->en_ctx, filtered_frame);
                 if (ret < 0) {
                     fprintf(stderr, "Error while send filtered frame:%s\n",av_err2str(ret));
                     goto end;
                 }
                 av_frame_unref(filtered_frame);
             }
+
             //接受经过filter过的包
             while(1) {
-                ret = avcodec_receive_packet(en_ctx, filtered_pkt);
+                ret = avcodec_receive_packet(info->en_ctx, filtered_pkt);
                 if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF){
                     break;
                 }
@@ -641,14 +612,17 @@ int trans_vpacket(AVFormatContext *ic,AVCodecContext *dec_ctx,AVFormatContext *o
                     fprintf(stderr, "Error while receiving filtered packet\n");
                     goto end;
                 }
-                /*printf("filtered packet:timebase{%d,%d} pts[%d] dts[%d]\n",
-                    filtered_pkt->time_base.den,
-                    filtered_pkt->time_base.num,
+                /*printf("filtered packet:timebase{%d,%d} pts[%d] dts[%d] duration[%d]\n",
+                    istream->time_base.den,
+                    istream->time_base.num,
                     filtered_pkt->pts,
-                    filtered_pkt->dts);*/
-                filtered_pkt->time_base = oc->streams[out_stream_id]->time_base;
+                    filtered_pkt->dts,
+                    filtered_pkt->duration);
+                printf("out timebase{%d,%d} offset[%d]\n",ostream->time_base.den,ostream->time_base.num,time_offset);*/
+                // rescale output packet timestamp values from codec to stream timebase
+                av_packet_rescale_ts(filtered_pkt, istream->time_base, ostream->time_base);
                 filtered_pkt->stream_index = out_stream_id;
-                ret = av_interleaved_write_frame(oc, filtered_pkt);
+                ret = av_interleaved_write_frame(info->oc, filtered_pkt);
                 if (ret < 0) {
                     fprintf(stderr, "Error while writing filtered packet to output file\n");
                     goto end;
